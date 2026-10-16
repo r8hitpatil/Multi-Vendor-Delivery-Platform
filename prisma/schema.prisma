@@ -44,6 +44,7 @@ model User {
   status Status @default(PENDING)
 
   orders Order[]
+  storeOrders OrderItem[]
   stores Store?
   address Address[]
 }
@@ -52,6 +53,8 @@ model Address {
   id String @unique @default(uuid())
   address String
   pin_code Int
+  lat String
+  long String
 
   userId String
   storeId String 
@@ -66,15 +69,26 @@ model Store {
   vendor User @relation(fields: [vendorId],references: [id])
   products Product[]
   orderItem OrderItem[]
-  storeAddress String
+  address StoreAddress?
+}
+
+model StoreAddress {
+  id String @unique @default(uuid())
+  storeName String @unique
+  storeAddress String @unique
+  lat String
+  long String
+
+  storeId String @unique
+  store Store @relation(fields: [storeId],references: [id])
 }
 
 model Order {
   id String @unique @default(uuid())
   customerId String
   driverId String
-  
-  user User @relation(fields: [customerId],references: [id])
+
+  customer User @relation(fields: [customerId],references: [id])
   orderItems OrderItem[]
 }
 
@@ -90,6 +104,9 @@ model OrderItem {
 
   storeId String
   store Store @relation(fields: [storeId], references: [id])
+
+  vendorId String
+  vendor User @relation(fields: [vendorId],references: [id])
 }
 
 model Product {

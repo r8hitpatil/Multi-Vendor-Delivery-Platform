@@ -1,6 +1,7 @@
 allowBuilds:
   '@prisma/client': true
   '@prisma/engines': true
+  argon2: false
   esbuild: false
   prisma: true
   sharp: false

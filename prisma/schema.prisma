@@ -44,7 +44,8 @@ model User {
   status Status @default(PENDING)
 
   orders Order[]
-  storeOrders OrderItem[]
+  storeOrders OrderItem[] @relation("VendorOrderItems")
+  driverOrders OrderItem[] @relation("DriverOrderItems")
   stores Store?
   address Address[]
 }
@@ -106,10 +107,10 @@ model OrderItem {
   store Store @relation(fields: [storeId], references: [id])
 
   vendorId String
-  vendor User @relation(fields: [vendorId],references: [id])
+  vendor User @relation("VendorOrderItems", fields: [vendorId],references: [id])
 
   driverId String
-  driver User @relation(fields: [driverId],references: [id])
+  driver User @relation("DriverOrderItems", fields: [driverId],references: [id])
 }
 
 model Product {

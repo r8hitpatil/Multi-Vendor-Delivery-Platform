@@ -37,7 +37,7 @@ model User {
   password String
   Role Role @default(CUSTOMER)
 
-  companyName String @unique
+  companyName String? @unique
 
   ban Boolean
 
@@ -58,11 +58,10 @@ model Address {
   long String
 
   userId String
-  storeId String 
+  storeId String?
 
   user User @relation(fields: [userId],references: [id])
 }
-
 
 model Store {
   id String @unique @default(uuid())

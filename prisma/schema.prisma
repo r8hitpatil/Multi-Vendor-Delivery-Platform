@@ -6,3 +6,99 @@ generator client {
   provider = "prisma-client"
   output   = "../app/generated/prisma"
 }
+
+enum Role {
+  SUPER_ADMIN
+  ADMIN
+  VENDOR
+  DRIVER
+  CUSTOMER
+}
+
+enum Status {
+  REJECTED
+  PENDING
+  ACCEPTED
+}
+
+enum OrderStatus {
+  RECIEVED
+  IN_TRANSIT
+  REACHED
+  OUT_OF_DELIVERY
+  COMPLETED
+}
+
+model User {
+  id String @unique @default(uuid())
+  name String
+  phone Int @unique
+  email String @unique
+  password String
+  Role Role @default(CUSTOMER)
+
+  companyName String @unique
+
+  ban Boolean
+
+  status Status @default(PENDING)
+
+  orders Order[]
+  stores Store?
+  address Address[]
+}
+
+model Address {
+  id String @unique @default(uuid())
+  address String
+  pin_code Int
+
+  userId String
+  storeId String 
+
+  user User @relation(fields: [userId],references: [id])
+}
+
+
+model Store {
+  id String @unique @default(uuid())
+  vendorId String @unique
+  vendor User @relation(fields: [vendorId],references: [id])
+  products Product[]
+  orderItem OrderItem[]
+  storeAddress String
+}
+
+model Order {
+  id String @unique @default(uuid())
+  customerId String
+  driverId String
+  
+  user User @relation(fields: [customerId],references: [id])
+  orderItems OrderItem[]
+}
+
+model OrderItem {
+  id String @unique @default(uuid())
+  orderStatus OrderStatus
+
+  orderId String
+  order Order @relation(fields: [orderId],references: [id])
+
+  productId String
+  product Product @relation(fields: [productId],references: [id])
+
+  storeId String
+  store Store @relation(fields: [storeId], references: [id])
+}
+
+model Product {
+  id String @unique @default(uuid())
+  name String @unique
+  quantity Int
+
+  storeId String
+  storeProducts Store @relation(fields: [storeId],references: [id])
+
+  orderItem OrderItem[]
+}

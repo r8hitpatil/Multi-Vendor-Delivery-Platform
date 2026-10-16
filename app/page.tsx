@@ -1,8 +1,12 @@
+"use client"
+
+import LoginPage from "./(auth)/login/page";
+
 export default function Home() {
 
   return (
     <div>
-      <h1>Home Page</h1>
+      <LoginPage/>
     </div>
   );
 }

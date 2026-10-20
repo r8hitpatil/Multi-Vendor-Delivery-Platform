@@ -32,7 +32,7 @@ enum OrderStatus {
 model User {
   id String @unique @default(uuid())
   name String
-  phone Int @unique
+  phone String @unique
   email String @unique
   password String
   Role Role @default(CUSTOMER)

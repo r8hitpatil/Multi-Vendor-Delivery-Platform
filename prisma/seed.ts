@@ -15,7 +15,7 @@ export async function main(){
         create : {
             email : "super@admin.com",
             name : "Rohit",
-            phone : 123456789,
+            phone : "123456789",
             password : await argon.hash('makichu@123'),
             Role : 'SUPER_ADMIN',
             companyName : "BilluBackchod",
@@ -37,7 +37,7 @@ export async function main(){
         create : {
             email : "r@gmail.com",
             name : "Rohan",
-            phone : 987654321,
+            phone : "987654321",
             password : await argon.hash('ro@123'),
             ban : false,
             status : 'ACCEPTED',

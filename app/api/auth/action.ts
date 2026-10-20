@@ -33,14 +33,14 @@ export async function loginAction(body: LoginBody) {
   email: user.email,
   });
 
-    const cookieStore = await cookies();
+  const cookieStore = await cookies();
 
-    cookieStore.set("access_token",token,{
-        httpOnly : true,
-        secure : process.env.NODE_ENV === "production",
-        sameSite : "lax",
-        path : "/",
-    });
+  cookieStore.set("access_token",token,{
+      httpOnly : true,
+      secure : process.env.NODE_ENV === "production",
+      sameSite : "lax",
+      path : "/",
+  });
 
   return {
     success: true,
@@ -51,4 +51,10 @@ export async function loginAction(body: LoginBody) {
       role: user.Role,
     },
   };
+}
+
+export async function verifyMe(){
+  const cookie = await cookies();
+
+  cookie.get('access_token');
 }

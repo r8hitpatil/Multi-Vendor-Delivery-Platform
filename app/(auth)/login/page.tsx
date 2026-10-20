@@ -5,7 +5,6 @@ import {
     CardAction,
     CardContent,
     CardDescription,
-    CardFooter,
     CardHeader,
     CardTitle,
 } from "@/components/ui/card"
@@ -84,8 +83,6 @@ export default function LoginPage() {
                     Login
                 </Button>
                 </form>
-                <CardFooter className="flex-col gap-2">
-                </CardFooter>
             </Card>
         </div>
     )

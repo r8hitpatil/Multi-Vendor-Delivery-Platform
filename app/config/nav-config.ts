@@ -22,17 +22,21 @@ export const TableContents: NavContent = {
         {
             title: "Manage Admin",
             url: "/dashboard/super-admin/manage-admin",
+        },
+        {
+            title: "Create Company",
+            url: "/dashboard/super-admin/create-company",
         }]
     },
     ADMIN: {
         title: "admin",
         actions: [{
-            title: "Create",
-            url: "/dashboard/super-admin/create-vendor",
+            title: "Create Vendor",
+            url: "/dashboard/admin/create-vendor",
         },
         {
-            title: "Manage Admin",
-            url: "/dashboard/super-admin/manage-vendor",
+            title: "Manage Vendor",
+            url: "/dashboard/admin/manage-vendor",
         }]
     }
 }

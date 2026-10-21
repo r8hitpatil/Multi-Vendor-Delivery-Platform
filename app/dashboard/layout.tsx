@@ -2,8 +2,8 @@ import AppSidebar from "@/components/app-sidebar";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { cookies } from "next/headers";
 import { ReactNode } from "react";
-import { verifyToken } from "../libs/auth";
 import { Role } from "../config/nav-config";
+import { verifyToken } from "../libs/jwt";
 
 export const instant = false;
 

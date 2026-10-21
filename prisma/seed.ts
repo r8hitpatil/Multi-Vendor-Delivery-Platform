@@ -18,7 +18,6 @@ export async function main(){
             phone : "123456789",
             password : await argon.hash('makichu@123'),
             Role : 'SUPER_ADMIN',
-            companyName : "BilluBackchod",
             ban : false,
             status : 'ACCEPTED',
             address : {

@@ -30,41 +30,57 @@ enum OrderStatus {
 }
 
 model User {
-  id String @unique @default(uuid())
+  id String @id @default(uuid())
   name String
   phone String @unique
   email String @unique
   password String
   Role Role @default(CUSTOMER)
 
-  companyName String? @unique
-
-  ban Boolean
-
+  aadhar String? @unique
+  pan String? @unique
+  ban Boolean @default(false)
   status Status @default(PENDING)
+
+  adminId String?
+  admin   User?   @relation("AdminVendors", fields: [adminId], references: [id])
+  vendors User[]  @relation("AdminVendors")
 
   orders Order[]
   storeOrders OrderItem[] @relation("VendorOrderItems")
   driverOrders OrderItem[] @relation("DriverOrderItems")
+  companyId String?
+  compay Company? @relation(fields: [companyId], references: [id])
   stores Store?
   address Address[]
 }
 
+model Company {
+  id String @id @default(uuid())
+  companyName String @unique
+  about String
+
+  addressId String @unique
+  address Address @relation(fields: [addressId],references: [id])
+
+  user User[]
+}
+
 model Address {
-  id String @unique @default(uuid())
+  id String @id @default(uuid())
   address String
   pin_code Int
   lat String
   long String
 
-  userId String
+  userId String?
+  user User? @relation(fields: [userId],references: [id])
   storeId String?
-
-  user User @relation(fields: [userId],references: [id])
+  company Company?
 }
 
 model Store {
-  id String @unique @default(uuid())
+  id String @id @default(uuid())
   vendorId String @unique
   vendor User @relation(fields: [vendorId],references: [id])
   products Product[]
@@ -73,7 +89,7 @@ model Store {
 }
 
 model StoreAddress {
-  id String @unique @default(uuid())
+  id String @id @default(uuid())
   storeName String @unique
   storeAddress String @unique
   lat String
@@ -84,7 +100,7 @@ model StoreAddress {
 }
 
 model Order {
-  id String @unique @default(uuid())
+  id String @id @default(uuid())
   customerId String
   driverId String
 
@@ -93,7 +109,7 @@ model Order {
 }
 
 model OrderItem {
-  id String @unique @default(uuid())
+  id String @id @default(uuid())
   orderStatus OrderStatus
 
   orderId String
@@ -113,7 +129,7 @@ model OrderItem {
 }
 
 model Product {
-  id String @unique @default(uuid())
+  id String @id @default(uuid())
   name String @unique
   quantity Int
 

@@ -33,3 +33,19 @@
 * **Never Trust the Client:** Server Actions are open RPC endpoints. Always guard them internally with `session?.role !== 'SUPER_ADMIN'` to prevent IDOR and privilege escalation.
 * **Centralized `getSession()`:** Keep session reading in `lib/auth.ts` so layout, pages, and actions share one secure Data Access Layer.
 * **Form Reset Key Trick:** Use `key={item.id}` on `<form>` to automatically reset uncontrolled inputs when switching selected records without Base UI warnings.
+* **Auth Guards Must `throw`:** Helpers like `requireSuperAdmin()` must `throw new Error(...)` rather than returning `{ success: false }`, ensuring execution halts immediately and flows to `catch`.
+
+### 3. TypeScript & Error Handling
+* **`as const` for Discriminated Unions:** TypeScript widens `{ success: false }` to `{ success: boolean }`, breaking `res.data` narrowing. Adding `false as const` locks literal types, proving to TypeScript that `res.data` exists when `res.success` is `true`.
+* **Compile-Time vs Runtime:** `as const` is a pure TypeScript type assertion. It produces zero JavaScript at runtime (does not freeze or convert the object).
+* **Centralized `handleActionError()`:** Catch database constraints (Prisma `P2002` on unique fields like `phone`/`email`) and ensure standard Errors don't get dropped or return `undefined`.
+
+### 4. React & Next.js Gotchas
+* **`value` vs `defaultValue`:** Setting `value={item.name}` without an `onChange` handler freezes the input as read-only. Use `defaultValue` with `<form key={item.id}>` for self-resetting, editable fields.
+* **`error.ts` Reserved File Trap:** In Next.js `app/`, `error.ts` is reserved exclusively for Client Component Error Boundaries. Name utility/lib files `errors.ts` (plural) to avoid Next.js forcing `"use client"`.
+* **Prisma Seed Sync (`P2021`):** Run `prisma db push` to generate database tables before running `prisma db seed`. Ensure required model fields have values or are marked optional (`String?`).
+
+### 5. Multi-Tenant Authorization
+* **Source of Truth vs Stale Tokens:** Cookies/JWTs are snapshots; if an admin's company changes in the DB, the cookie remains stale until re-login. Always fetch the latest company from the database on write operations.
+* **Scoped Prisma Mutations:** Scope updates directly with `where: { id, companyName }` so cross-tenant modifications are rejected at the database level.
+

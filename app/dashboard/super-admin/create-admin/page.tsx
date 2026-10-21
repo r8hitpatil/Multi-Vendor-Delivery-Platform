@@ -1,38 +1,54 @@
 "use client"
-import { createAdmin } from "@/app/api/super-admin/action";
+import { createAdmin, getCompany } from "@/app/api/super-admin/action";
+import { Company } from "@/app/generated/prisma/client";
 import { Role } from "@/app/generated/prisma/enums";
-import { Card, CardAction, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Button, Input } from "@base-ui/react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 export default function CreateAdmin(){
 
     const [error,setError] = useState('');
+    const [companies,setCompanies] = useState<Company[]>([]);
 
     async function handleSubmit(formData:FormData){
         const name = formData.get("name") as string;
         const phone = formData.get("phone") as string;
         const email = formData.get("email") as string;
         const password = formData.get("password") as string;
+        const companyId = formData.get("companyId") as string;
         const ban = Boolean(formData.get("ban"));
         const Role = formData.get("role") as Role;
-        const res = await createAdmin({ name,phone,email,password,ban, Role });
+        const res = await createAdmin({ name,phone,email,companyId,password,ban, Role });
         if(res.success && res.data){
             console.log('Created admin',res)
         }
         else{
             setError(res.message);
+        }
     }
-}
+
+    useEffect(() => {
+        const a = async() => {
+            const res = await getCompany();
+            if(res.success && res.data){
+                setCompanies(res.data);
+            }
+            else{
+                setError(res.message);
+            }
+        }
+        a();
+    },[])
 
     return (
         <div>
             <Card className="w-full max-w-sm">
                 <CardHeader>
-                    <CardTitle>Login to your account</CardTitle>
+                    <CardTitle>Create admin account</CardTitle>
                     <CardDescription>
-                        Enter your email below to login to your account
+                        Enter details to create admin account
                     </CardDescription>
                     <CardAction>
                         <Button type="button">Sign Up</Button>
@@ -81,13 +97,22 @@ export default function CreateAdmin(){
                                 <Input id="password" name="password" type="password" placeholder="Password" required />
                             </div>
                             <div className="grid gap-2">
+                                <div className="flex items-center">
+                                    <Label htmlFor="comapany">Company</Label>
+                                </div>
+                                <select name="companyId" id="companyId" required>
+                                    {companies?.map((item:any) => (
+                                        <option key={item.id} value={item.id}><span>{item.companyName}</span></option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div className="grid gap-2">
                                 <Label htmlFor="ban">Ban</Label>
                                 <Input
                                     id="ban"
                                     type="checkbox"
                                     name="ban"
                                     placeholder="ban"
-                                    required
                                 />
                             </div>
                             <div className="grid gap-2">

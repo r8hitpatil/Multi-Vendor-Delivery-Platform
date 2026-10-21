@@ -89,7 +89,7 @@ export default function ManageAdmin() {
                                     id="name"
                                     type="name"
                                     name="name"
-                                    value={adminValues.name}
+                                    defaultValue={adminValues.name}
                                     placeholder="name"
                                     required
                                 />
@@ -101,7 +101,7 @@ export default function ManageAdmin() {
                                     type="email"
                                     name="email"
                                     placeholder="Email"
-                                    value={adminValues.email}
+                                    defaultValue={adminValues.email}
                                     required
                                 />
                             </div>
@@ -109,7 +109,7 @@ export default function ManageAdmin() {
                                 <div className="flex items-center">
                                     <Label htmlFor="phone">Phone</Label>
                                 </div>
-                                <Input id="phone" name="phone" value={adminValues.phone} type="phone" placeholder="phone" required />
+                                <Input id="phone" name="phone" defaultValue={adminValues.phone} type="phone" placeholder="phone" required />
                             </div>
                                                         <div className="grid gap-2">
                                 <Label htmlFor="ban">Ban</Label>

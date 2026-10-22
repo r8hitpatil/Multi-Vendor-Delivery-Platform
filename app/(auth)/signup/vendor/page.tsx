@@ -128,7 +128,7 @@ export default function VendorSignupPage (){
                             </div>
                             <div className="flex items-center">
                                 <Label htmlFor="admin">Admins</Label>
-                                <select name="admin">
+                                <select name="admin" required>
                                     <option value="">--select option--</option>
                                     {admins.map((e) => (
                                         <option key={e.id} value={e.id}>{e.name}</option>

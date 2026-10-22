@@ -46,13 +46,17 @@ model User {
   admin   User?   @relation("AdminVendors", fields: [adminId], references: [id])
   vendors User[]  @relation("AdminVendors")
 
+  adminDriverId String?
+  adminDriver User? @relation("AdminDrivers", fields: [adminDriverId],references: [id])
+  drivers User[] @relation("AdminDrivers")
+
   orders Order[]
   storeOrders OrderItem[] @relation("VendorOrderItems")
   driverOrders OrderItem[] @relation("DriverOrderItems")
   companyId String?
-  compay Company? @relation(fields: [companyId], references: [id])
+  company Company? @relation(fields: [companyId], references: [id])
   stores Store?
-  address Address[]
+  address Address[] 
 }
 
 model Company {

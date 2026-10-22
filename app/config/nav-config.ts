@@ -30,13 +30,17 @@ export const TableContents: NavContent = {
     },
     ADMIN: {
         title: "admin",
-        actions: [{
-            title: "Create Vendor",
-            url: "/dashboard/admin/create-vendor",
-        },
+        actions: [
         {
             title: "Manage Vendor",
             url: "/dashboard/admin/manage-vendor",
+        },
+        {
+            title: "Create Driver",
+            url: "/dashboard/admin/create-driver",
+        },{
+            title: "Manage Driver",
+            url: "/dashboard/admin/manage-driver",
         }]
     }
 }

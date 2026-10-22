@@ -29,9 +29,10 @@ export default function ManageDriver(){
     } 
 
     async function handleSubmit(formData:FormData) {
+        if(!selectDriver?.id) return;
+
         const ban = Boolean(formData.get("ban"));
-        const id = formData.get("admin-id") as string;
-        const res = await manageDriver({  id , ban });
+        const res = await manageDriver({  id:selectDriver.id , ban });
         if(res.success){
             console.log('Updated',res)
         }
@@ -53,7 +54,7 @@ export default function ManageDriver(){
     return (
         <div>
             <div>
-                <select name="admin" id="admin-value" onChange={(e) => (selectedValue(e.target.value))} required>
+                <select name="driver" id="driver-id" onChange={(e) => (selectedValue(e.target.value))} required>
                     <option value="">--Select value--</option>
                     {drivers.map((e) => (
                         <option key={e.id} value={e.id}><span>{e.name}</span></option>

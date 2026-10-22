@@ -109,11 +109,15 @@ export async function requireAdmin(){
       email : session.email
     },
     select : {
+      id : true,
       companyId : true
     }
   })
   if(!admin?.companyId){
     throw new Error("Admin is not assigned to any company");
   }
-  return admin.companyId;
+  return {
+    adminId : admin.id,
+    companyId : admin.companyId
+  };
 }

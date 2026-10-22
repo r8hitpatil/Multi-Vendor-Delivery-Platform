@@ -55,7 +55,7 @@ export async function getAdmins(companyId:string){
         if(users.length<1){
             return {
                 success : false,
-                message : "Company admin details fetched",
+                message : "Company admin details not availabe",
             }
         }
         return {

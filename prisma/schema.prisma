@@ -55,7 +55,8 @@ model User {
   driverOrders OrderItem[] @relation("DriverOrderItems")
   companyId String?
   company Company? @relation(fields: [companyId], references: [id])
-  stores Store?
+  
+  store Store?
   address Address[] 
 }
 
@@ -79,7 +80,6 @@ model Address {
 
   userId String?
   user User? @relation(fields: [userId],references: [id])
-  storeId String?
   company Company?
 }
 
@@ -134,7 +134,7 @@ model OrderItem {
 
 model Product {
   id String @id @default(uuid())
-  name String @unique
+  name String
   quantity Int
 
   storeId String

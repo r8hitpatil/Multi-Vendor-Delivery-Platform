@@ -121,3 +121,33 @@ export async function requireAdmin(){
     companyId : admin.companyId
   };
 }
+
+export async function requireVendor(){
+  const session = await getSession();
+  if(session?.role !== "VENDOR"){
+    throw new Error ("Unauthorized : Only authorized roles are allowed")
+  }
+  const vendor = await prisma.user.findUnique({
+    where : {
+      email : session.email,
+    },
+    select : {
+      id : true,
+      companyId : true,
+      status : true,
+      store : {
+        select : {
+          id : true,
+        }
+      }
+    }
+  })
+  if(!vendor?.companyId){
+    throw new Error("Vendor is not assigned to any admin");
+  }
+  return {
+    adminId : vendor.id,
+    storeId : vendor.store?.id,
+    status : vendor.status
+  };
+}

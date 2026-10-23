@@ -1,7 +1,7 @@
 "use client"
 
+import { createVendor, getAdmins } from "@/app/api/admin/action";
 import { getCompany } from "@/app/api/super-admin/action";
-import { createVendor, getAdmins } from "@/app/api/vendor/action";
 import { Company, User } from "@/app/generated/prisma/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";

@@ -31,6 +31,17 @@ type DriverBody = {
     ban : boolean
 }
 
+type CreateVendor = {
+    name : string,
+    email : string,
+    password : string,
+    aadhar : string,
+    phone : string,
+    pan : string,
+    companyId : string,
+    adminId : string
+}
+
 export async function getVendors(){
     try {
         const usr = await requireAdmin();
@@ -197,6 +208,58 @@ export async function manageDriver(body:ManageDriver){
         return {
             success : true,
             message : "Driver updated"
+        }
+    } catch (error) {
+        return handleActionError(error);
+    }
+}
+
+export async function createVendor(body:CreateVendor){
+    const { name, email , password , aadhar , phone , pan , companyId , adminId } = body;
+
+    try {
+        const hashedPass = await argon.hash(password);
+        
+        await prisma.user.create({
+            data : {
+                name,
+                email,
+                password : hashedPass,
+                aadhar,
+                pan,
+                phone,
+                companyId,
+                Role : Role.VENDOR,
+                adminId
+            }
+        })
+        return {
+            success : true,
+            message : "Created new vendor"
+        }
+    } catch (error) {
+        return handleActionError(error);
+    }
+}
+
+export async function getAdmins(companyId:string){
+    try {
+        const users = await prisma.user.findMany({
+            where : {
+                companyId,
+                Role : Role.ADMIN
+            }
+        })
+        if(users.length<1){
+            return {
+                success : false,
+                message : "Company admin details not availabe",
+            }
+        }
+        return {
+            success : true,
+            message : "Company Admins",
+            data : users
         }
     } catch (error) {
         return handleActionError(error);

@@ -1,17 +1,25 @@
 "use client"
 import { getProducts } from "@/app/api/vendor/action";
-import { Product } from "@/app/generated/prisma/client";
+import { Product, Status } from "@/app/generated/prisma/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useEffect, useState } from "react";
 import EditProductDrawer from "./edit-product-drawer";
 import DeleteProductDrawer from "./delete-product-drawer";
+import { requireVendor } from "@/app/api/auth/action";
+import PageLoading from "../loading";
 
 export default function ManageProductPage(){
 
     const [products,setProducts] = useState<Product[]>();
     const [edit,setEdit] = useState<Product | null>(null);
     const [del,setDel] = useState<Product | null>(null);
+    
+    const [status,setStatus] = useState<Status>();
+    const [hasStore,setHasStore] = useState(false);
+    const [isBanned,setIsBanned] = useState(false);
+    const [isLoading,setIsLoading] = useState(true);
+    const [error,setError] = useState('');
 
     async function loadProducts() {
         const res = await getProducts();
@@ -20,9 +28,31 @@ export default function ManageProductPage(){
         }
     }
 
-    useEffect(() =>{
-        loadProducts();
+    useEffect(() => {
+        const a = async() => {
+                try {
+                    const res = await requireVendor();
+                    setStatus(res.status);
+                    setHasStore(Boolean(res.storeId));
+                    setIsBanned(Boolean(res.ban));
+                    loadProducts();
+                } catch (error:any) {
+                    setError(error);
+                }
+                finally{
+                    setIsLoading(false);
+                }
+        };
+        a();
     },[])
+
+    if(isLoading) return <PageLoading/>
+
+    if(isBanned) return <div>Vendor is banned</div>
+
+    if(status!=="ACCEPTED") return <div>User not approved</div>
+
+    if(!hasStore) return <div>Create a store first</div>
 
     return (
         <div>

@@ -6,11 +6,13 @@ import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle }
 import { Label } from "@/components/ui/label";
 import { Button, Input } from "@base-ui/react";
 import { useEffect, useState } from "react";
+import PageLoading from "../loading";
 
 export default function ManageVendor(){
 
     const [error,setError] = useState('');
     const [vendor,setVendors] = useState<User[]>([]);
+    const [isLoading,setIsLoading] = useState(true);
 
     async function handleSubmit(formData:FormData){
         const status = formData.get("status") as Status;
@@ -27,16 +29,24 @@ export default function ManageVendor(){
 
     useEffect(() => {
         const a = async() => {
-            const res = await getVendors();
-            if(res.success && res.data){
-                setVendors(res.data);
-            }
-            else{
-                setError(res.message);
+            try {
+                const res = await getVendors();
+                if(res.success && res.data){
+                    setVendors(res.data);
+                }
+                else{
+                    setError(res.message);
+                }
+            } catch (error:any) {
+                setError(error.message);
+            } finally {
+                setIsLoading(false);
             }
         }
         a();
     },[])
+
+    if(isLoading) return <PageLoading/>
 
     return (
         <div>

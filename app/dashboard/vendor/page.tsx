@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useEffect, useState } from "react"
+import PageLoading from "./loading";
 
 export default function VendorPage(){
 
@@ -53,7 +54,7 @@ export default function VendorPage(){
         a();
     },[])
 
-    if(isLoading) return <div>Loading vendor profile...</div>
+    if(isLoading) return <PageLoading/>
 
     if(status==="PENDING"){
         return (

@@ -8,13 +8,16 @@ import { useEffect, useState } from "react";
 import { createNewProduct } from "../../../api/vendor/action";
 import { requireVendor } from "@/app/api/auth/action";
 import { Status } from "@/app/generated/prisma/enums";
+import Link from "next/link";
+import PageLoading from "../loading";
 
 export default function CreateProduct(){
 
     const [error,setError] = useState();
-    const [loading,setLoading] = useState(true);
     const [status,setStatus] = useState<Status>();
     const [hasStore,setHasStore] = useState(false);
+    const [isBanned,setIsBanned] = useState(false);
+    const [isLoading,setIsLoading] = useState(true);
     
     async function handleSubmit(formData:FormData){
         const name = formData.get("name") as string;
@@ -35,21 +38,28 @@ export default function CreateProduct(){
                 const res = await requireVendor();
                 setStatus(res.status);
                 setHasStore(Boolean(res.storeId));
+                setIsBanned(Boolean(res.ban));
             } catch (error:any) {
                 setError(error);
             }
             finally{
-                setLoading(false);
+                setIsLoading(false);
             }
         };
         a();
     },[])
 
-    if(loading) return <div>loading....</div>
+    if(isLoading) return <PageLoading/>
+
+    if(isBanned) return <div>Vendor is banned</div>
 
     if(status!=="ACCEPTED") return <div>User not approved</div>
 
-    if(!hasStore) return <div>Create a store first</div>
+    if(!hasStore) return <div>
+        <div>Create a store first</div>
+        <Link href={"/dashboard/vendor"}>Create store here</Link>
+    </div>
+    
 
     return(
         <div>

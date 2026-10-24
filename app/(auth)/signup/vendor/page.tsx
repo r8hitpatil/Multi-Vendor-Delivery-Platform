@@ -3,6 +3,7 @@
 import { createVendor, getAdmins } from "@/app/api/admin/action";
 import { getCompany } from "@/app/api/super-admin/action";
 import { Company, User } from "@/app/generated/prisma/client";
+import PageLoading from "@/components/page-loading";
 import { Button } from "@/components/ui/button";
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -16,6 +17,7 @@ export default function VendorSignupPage (){
     const [error,setError] = useState<string | null>(null);
     const [company,setCompany] = useState<Company[]>([]);
     const [admins,setAdmins] = useState<User[]>([]);
+    const [isLoading,setIsLoading] = useState(true);
 
     
     async function getAllAdmins(companyId:string){
@@ -30,12 +32,18 @@ export default function VendorSignupPage (){
 
     useEffect(() => {
         const a = async () => {
-            const res = await getCompany();
-            if(res.success && res.data){
-                setCompany(res.data);
-            }
-            else{
-                setError(res.message);
+            try {
+                const res = await getCompany();
+                if(res.success && res.data){
+                    setCompany(res.data);
+                }
+                else{
+                    setError(res.message);
+                }
+            } catch (error:any) {
+                setError(error.message);
+            } finally {
+                setIsLoading(false);
             }
         }
         a();
@@ -69,6 +77,8 @@ export default function VendorSignupPage (){
             setError(res.message);
         }
     }
+
+    if(isLoading) return <PageLoading/>
 
     return (
         <div>

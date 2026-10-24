@@ -7,12 +7,14 @@ import { useEffect, useState } from "react";
 import { Checkbox } from "@/components/ui/checkbox";
 import type { User } from "@/app/generated/prisma/client";
 import { getDrivers, manageDriver, selectedDriver } from "@/app/api/admin/action";
+import PageLoading from "../loading";
 
 export default function ManageDriver(){
 
     const [drivers,setDrivers] = useState<User[]>([]);
     const [selectDriver,setSelectDriver] = useState<any>();
     const [error,setError] = useState('');
+    const [isLoading,setIsLoading] = useState(true);
 
     async function selectedValue(id:string){
         if(!id){
@@ -43,13 +45,21 @@ export default function ManageDriver(){
 
     useEffect(() => {
         const a = async () => {
-            const res = await getDrivers();
-            if(res.success && res.data){
-                setDrivers(res.data);
+            try {
+                const res = await getDrivers();
+                if(res.success && res.data){
+                    setDrivers(res.data);
+                }
+            } catch (error:any) {
+                setError(error.message);
+            } finally {
+                setIsLoading(false);
             }
         };
         a();
     },[])
+
+    if(isLoading) return <PageLoading/>
 
     return (
         <div>

@@ -1,53 +1,21 @@
 "use server"
 
-import { Role, Status } from "@/app/generated/prisma/enums"
+import { Role } from "@/app/generated/prisma/enums"
 import { handleActionError } from "@/app/libs/errors";
 import { prisma } from "@/app/libs/prisma";
 import { requireAdmin } from "../auth/action";
 import * as argon from 'argon2';
-
-type UpdateVendorBody = {
-    id : string,
-    ban : boolean,
-    status : Status
-}
-
-type ManageDriver = {
-    id : string
-    ban : boolean,
-}
-
-type DriverBody = {
-    name : string,
-    phone : string,
-    aadhar : string,
-    pan : string,
-    email : string,
-    password : string,
-    addressDesc : string,
-    pin_code : number,
-    lat : string,
-    long : string,
-    ban : boolean
-}
-
-type CreateVendor = {
-    name : string,
-    email : string,
-    password : string,
-    aadhar : string,
-    phone : string,
-    pan : string,
-    companyId : string,
-    adminId : string
-}
+import { createVendorSchema } from "@/app/(auth)/schema";
+import { zodError } from "@/app/libs/zod-error";
+import { createDriverSchema, manageDriverSchema, updateVendorSchema } from "./schema";
 
 export async function getVendors(){
     try {
-        const usr = await requireAdmin();
+        const { companyId,adminId } = await requireAdmin();
         const vendors = await prisma.user.findMany({
             where : {
-                companyId : usr.companyId,
+                companyId,
+                adminId,
                 Role : Role.VENDOR
             }
         })
@@ -67,16 +35,19 @@ export async function getVendors(){
     }
 }
 
-export async function updateVendor(body : UpdateVendorBody){
-    const { id , ban , status } = body;
+export async function updateVendor(body : unknown){
+    const res = updateVendorSchema.safeParse(body);
+    if(!res.success) return zodError(res.error)
+    const { id , ban , status } = res.data;
 
     try {
 
-        await requireAdmin();
+        const { companyId } = await requireAdmin();
 
         await prisma.user.update({
             where : {
-                id
+                id,
+                companyId
             },
             data : {
                 ban,
@@ -92,8 +63,10 @@ export async function updateVendor(body : UpdateVendorBody){
     }
 }
 
-export async function createDriver(body: DriverBody){
-    const { name,phone,aadhar,pan,email,password,ban,addressDesc,pin_code,lat,long } = body;
+export async function createDriver(body: unknown){
+    const res = createDriverSchema.safeParse(body);
+    if(!res.success) return zodError(res.error)
+    const { name,phone,aadhar,pan,email,password,ban,addressDesc,pin_code,lat,long } = res.data;
     try {
         const { companyId,adminId } = await requireAdmin();
 
@@ -134,11 +107,12 @@ export async function createDriver(body: DriverBody){
 
 export async function getDrivers(){
     try {
-        const { companyId } = await requireAdmin();
+        const { companyId,adminId } = await requireAdmin();
 
         const drivers = await prisma.user.findMany({
             where : {
                 companyId,
+                adminDriverId:adminId,
                 Role : Role.DRIVER
             }
         })
@@ -184,16 +158,17 @@ export async function selectedDriver(id:string) {
     }
 }
 
-export async function manageDriver(body:ManageDriver){
-
-    const { id , ban } = body;
+export async function manageDriver(body:unknown){
+    const res = manageDriverSchema.safeParse(body);
+    if(!res.success) return zodError(res.error);
+    const { id , ban } = res.data;
 
     try {
         await requireAdmin();
 
         const updateDriver = await prisma.user.update({
             where : {
-                id
+                id,
             },
             data : {
                 ban
@@ -214,8 +189,11 @@ export async function manageDriver(body:ManageDriver){
     }
 }
 
-export async function createVendor(body:CreateVendor){
-    const { name, email , password , aadhar , phone , pan , companyId , adminId } = body;
+export async function createVendor(body:unknown){
+    
+    const res = createVendorSchema.safeParse(body);
+    if(!res.success) return zodError(res.error);
+    const { name, email , password , aadhar , phone , pan , companyId , adminId } = res.data;
 
     try {
         const hashedPass = await argon.hash(password);
@@ -234,7 +212,7 @@ export async function createVendor(body:CreateVendor){
             }
         })
         return {
-            success : true,
+            success : true as const,
             message : "Created new vendor"
         }
     } catch (error) {

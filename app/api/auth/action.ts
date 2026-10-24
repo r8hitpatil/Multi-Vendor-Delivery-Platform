@@ -6,15 +6,17 @@ import { createToken } from "@/app/libs/jwt";
 import { prisma } from "@/app/libs/prisma";
 import * as argon from "argon2";
 import { cookies } from "next/headers";
+import { loginUserSchema } from "./schema";
+import { zodError } from "@/app/libs/zod-error";
 
-type LoginBody = {
-  email: string;
-  password: string;
-};
-
-export async function loginAction(body: LoginBody) {
+export async function loginAction(body: unknown) {
   try {
-    const { email, password } = body;
+    const res = loginUserSchema.safeParse(body);
+    if(!res.success){
+      return zodError(res.error)
+    }
+
+    const { email , password } = res.data;
 
     const user = await prisma.user.findUnique({
       where: { email },
@@ -69,36 +71,6 @@ export async function verifyMe() {
   cookie.get('access_token');
 }
 
-export async function isBanned() {
-  try {
-    const session = await getSession();
-    if (!session?.email) {
-      return {
-        success: false,
-        message: 'No session found'
-      }
-    }
-    const searchBan = await prisma.user.findUnique({
-      where: {
-        email: session.email
-      }
-    })
-    if (!searchBan) {
-      return {
-        success: false,
-        message: 'No user found'
-      }
-    }
-    return {
-      success: true,
-      message: 'Ban values',
-      data: searchBan
-    };
-  } catch (error) {
-    return handleActionError(error);
-  }
-}
-
 export async function requireAdmin(){
   const session = await getSession();
   if(session?.role !== "ADMIN"){
@@ -110,11 +82,15 @@ export async function requireAdmin(){
     },
     select : {
       id : true,
-      companyId : true
+      companyId : true,
+      ban : true
     }
   })
   if(!admin?.companyId){
     throw new Error("Admin is not assigned to any company");
+  }
+  if(admin.ban){
+    throw new Error("Admin account is banned");
   }
   return {
     adminId : admin.id,
@@ -135,6 +111,7 @@ export async function requireVendor(){
       id : true,
       companyId : true,
       status : true,
+      ban : true,
       store : {
         select : {
           id : true,
@@ -148,6 +125,7 @@ export async function requireVendor(){
   return {
     adminId : vendor.id,
     storeId : vendor.store?.id,
-    status : vendor.status
+    status : vendor.status,
+    ban : vendor.ban
   };
 }

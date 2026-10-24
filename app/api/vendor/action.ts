@@ -3,29 +3,18 @@
 import { prisma } from "@/app/libs/prisma";
 import { requireVendor } from "../auth/action";
 import { handleActionError } from "@/app/libs/errors";
+import { createStoreSchema, productBodySchema, updateProductBodySchema } from "./schema";
+import { zodError } from "@/app/libs/zod-error";
 
-type CreateStore = {
-    storeName : string,
-    storeAddress : string,
-    lat : string,
-    long : string
-}
-
-type ProductBody = {
-    name : string,
-    quantity : number
-}
-
-type UpdateProductBody = {
-    id : string,
-    name ?: string,
-    quantity ?: number,
-}
-
-export async function createStore(body : CreateStore){
-    const { storeName,storeAddress ,lat,long } = body;
+export async function createStore(body : unknown){
+    const res = createStoreSchema.safeParse(body);
+    if(!res.success) return zodError(res.error);
+    const { storeName,storeAddress ,lat,long } = res.data;
     try {
         const usr = await requireVendor();
+        if(usr.ban){
+            throw new Error("Vendor is banned");
+        }
         if(usr.status!=="ACCEPTED"){
             return {
                 success : false,
@@ -61,10 +50,15 @@ export async function createStore(body : CreateStore){
     }
 }
 
-export async function createNewProduct(body:ProductBody){
-    const { name , quantity } = body;
+export async function createNewProduct(body:unknown){
+    const res = productBodySchema.safeParse(body);
+    if(!res.success) return zodError(res.error);
+    const { name , quantity } = res.data;
     try {
         const usr = await requireVendor();
+        if(usr.ban){
+            throw new Error("Vendor is banned");
+        }
         if(!usr.storeId){
             return {
                 success : false,
@@ -87,10 +81,15 @@ export async function createNewProduct(body:ProductBody){
     }
 }
 
-export async function updateProduct(body:UpdateProductBody){
-    const { id , ...data } = body;
+export async function updateProduct(body:unknown){
+    const res = updateProductBodySchema.safeParse(body);
+    if(!res.success) return zodError(res.error);
+    const { id , ...data } = res.data;
     try {
         const usr = await requireVendor();
+        if(usr.ban){
+            throw new Error("Vendor is banned");
+        }
         if(!usr.storeId){
             return {
                 success : false as  const,
@@ -127,6 +126,9 @@ export async function updateProduct(body:UpdateProductBody){
 export async function getProducts(){
     try {
         const usr = await requireVendor();
+        if(usr.ban){
+            throw new Error("Vendor is banned");
+        }
         if(!usr.storeId){
             return {
                 success : false as  const,
@@ -157,6 +159,9 @@ export async function getProducts(){
 export async function deleteProduct(id:string){
     try {
         const usr = await requireVendor();
+        if(usr.ban){
+            throw new Error("Vendor is banned");
+        }
         if(!usr.storeId){
             return {
                 success : false as  const,

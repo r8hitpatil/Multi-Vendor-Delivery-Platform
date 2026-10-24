@@ -4,35 +4,13 @@ import { requireSuperAdmin } from "@/app/libs/auth";
 import { handleActionError } from "@/app/libs/errors";
 import { prisma } from "@/app/libs/prisma";
 import * as argon from 'argon2';
+import { createAdminSchema, createCompanySchema, manageAdminSchema } from "@/app/api/super-admin/schema";
+import { zodError } from "@/app/libs/zod-error";
 
-type CreateAdminBody = {
-    name: string,
-    phone: string,
-    email: string,
-    password: string,
-    ban: boolean,
-    companyId : string,
-    Role: Role
-}
-
-type ManageAdminBody = {
-    name: string,
-    phone: string,
-    email: string,
-    ban: boolean,
-}
-
-type CreateCompany = {
-    companyName : string,
-    about : string,
-    addressDesc : string, 
-    pin_code : number,
-    lat : string,
-    long : string
-}
-
-export async function createCompany(body : CreateCompany) {
-    const { companyName , about , addressDesc , pin_code ,lat,long } = body;
+export async function createCompany(body : unknown) {
+    const res = createCompanySchema.safeParse(body);
+    if(!res.success) return zodError(res.error);
+    const { companyName , about , addressDesc , pin_code ,lat,long } = res.data;
 
     try {
         await requireSuperAdmin();
@@ -80,8 +58,10 @@ export async function getCompany(){
     }
 }
 
-export async function createAdmin(body: CreateAdminBody) {
-    const { name, phone, email, password , companyId , ban, Role } = body;
+export async function createAdmin(body: unknown) {
+    const res = createAdminSchema.safeParse(body);
+    if(!res.success) return zodError(res.error);
+    const { name, phone, email, password , companyId , ban, Role } = res.data;
 
     try {
         await requireSuperAdmin();
@@ -91,7 +71,9 @@ export async function createAdmin(body: CreateAdminBody) {
         });
 
         if (admin) {
-            return { success: false, message: "User already exists" };
+            return {
+                success: false as const, message: "User already exists" 
+            };
         }
 
         const hashPass = await argon.hash(password);
@@ -109,7 +91,7 @@ export async function createAdmin(body: CreateAdminBody) {
         })
 
         return {
-            success: true,
+            success: true as const,
             message: "Created Admin successful",
             data: {
                 id: createAdmin.id,
@@ -122,8 +104,10 @@ export async function createAdmin(body: CreateAdminBody) {
     }
 }
 
-export async function manageAdmin(body: ManageAdminBody) {
-    const { name, phone, email, ban } = body;
+export async function manageAdmin(body: unknown) {
+    const res = manageAdminSchema.safeParse(body);
+    if(!res.success) return zodError(res.error);
+    const { name, phone, email, ban } = res.data;
 
     try {
         await requireSuperAdmin();
@@ -133,7 +117,7 @@ export async function manageAdmin(body: ManageAdminBody) {
         });
 
         if (!admin) {
-            return { success: false, message: "User doesn't exists" };
+            return { success: false as const, message: "User doesn't exists" };
         }
 
         const updateAdmin = await prisma.user.update({
@@ -149,13 +133,9 @@ export async function manageAdmin(body: ManageAdminBody) {
         })
 
         return {
-            success: true,
+            success: true as const,
             message: "Admin updated successfully",
-            data: {
-                id: updateAdmin.id,
-                email: updateAdmin.email,
-                role: updateAdmin.Role,
-            },
+            data : updateAdmin
         };
     } catch (error) {
         return handleActionError(error);

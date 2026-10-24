@@ -6,11 +6,13 @@ import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle }
 import { Label } from "@/components/ui/label";
 import { Button, Input } from "@base-ui/react";
 import { useEffect, useState } from "react";
+import PageLoading from "../loading";
 
 export default function CreateAdmin(){
 
     const [error,setError] = useState('');
     const [companies,setCompanies] = useState<Company[]>([]);
+    const [isLoading,setIsLoading] = useState(true);
 
     async function handleSubmit(formData:FormData){
         const name = formData.get("name") as string;
@@ -21,8 +23,8 @@ export default function CreateAdmin(){
         const ban = Boolean(formData.get("ban"));
         const Role = formData.get("role") as Role;
         const res = await createAdmin({ name,phone,email,companyId,password,ban, Role });
-        if(res.success && res.data){
-            console.log('Created admin',res)
+        if(res.success){
+            console.log('Created admin')
         }
         else{
             setError(res.message);
@@ -31,16 +33,24 @@ export default function CreateAdmin(){
 
     useEffect(() => {
         const a = async() => {
-            const res = await getCompany();
-            if(res.success && res.data){
-                setCompanies(res.data);
-            }
-            else{
-                setError(res.message);
+            try {
+                const res = await getCompany();
+                if(res.success && res.data){
+                    setCompanies(res.data);
+                }
+                else{
+                    setError(res.message);
+                }
+            } catch (error:any) {
+                setError(error.message);
+            } finally {
+                setIsLoading(false);
             }
         }
         a();
     },[])
+
+    if(isLoading) return <PageLoading/>
 
     return (
         <div>
@@ -101,6 +111,7 @@ export default function CreateAdmin(){
                                     <Label htmlFor="comapany">Company</Label>
                                 </div>
                                 <select name="companyId" id="companyId" required>
+                                    <option value="">--Select company--</option>
                                     {companies?.map((item:any) => (
                                         <option key={item.id} value={item.id}><span>{item.companyName}</span></option>
                                     ))}

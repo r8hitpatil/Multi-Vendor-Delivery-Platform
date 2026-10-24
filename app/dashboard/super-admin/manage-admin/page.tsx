@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Button, Input } from "@base-ui/react";
 import { useEffect, useState } from "react";
 import { Checkbox } from "@/components/ui/checkbox";
+import PageLoading from "../loading";
 
 type Admin = {
     id: string;
@@ -20,6 +21,7 @@ export default function ManageAdmin() {
     const [error,setError] = useState('');
     const [allAdmins,setAllAdmins] = useState<Admin[]>([]);
     const [adminValues,setAdminValues] = useState<any>();
+    const [isLoading,setIsLoading] = useState(true);
 
     async function handleSubmit(formData:FormData){
         const name = formData.get("name") as string;
@@ -27,8 +29,8 @@ export default function ManageAdmin() {
         const email = formData.get("email") as string;
         const ban = Boolean(formData.get("ban"));
         const res = await manageAdmin({ name,phone,email,ban });
-        if(res.success && res.data){
-            console.log('Created admin',res)
+        if(res.success){
+            console.log('Created admin')
         }
         else{
             setError(res.message);
@@ -47,16 +49,25 @@ export default function ManageAdmin() {
 
     useEffect(() => {
         async function c() {
-            const a = await dropAdmins();
-            if(a.success && a.data){
-                setAllAdmins(a.data);
+            try {
+                const a = await dropAdmins();
+                if(a.success && a.data){
+                    setAllAdmins(a.data);
+                }
+                else{
+                    setError(a.message);
+                }
+            } catch (error:any) {
+                setError(error.message)
             }
-            else{
-                setError(a.message);
+            finally {
+                setIsLoading(false);
             }
         }
         c();
     },[]);
+
+    if(isLoading) return <PageLoading/>
 
         return (
             <div>

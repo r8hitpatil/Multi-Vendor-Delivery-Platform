@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyToken } from "./app/libs/jwt";
 
-export async function middleware(req:NextRequest) {
+export async function proxy(req:NextRequest) {
     const token = req.cookies.get('access_token')?.value;
     const { pathname } = req.nextUrl;
 
@@ -21,12 +21,14 @@ export async function middleware(req:NextRequest) {
         if (pathname === "/login") {
             if (user.role === "SUPER_ADMIN") return NextResponse.redirect(new URL("/dashboard/super-admin", req.url));
             if (user.role === "ADMIN") return NextResponse.redirect(new URL("/dashboard/admin", req.url));
+            if (user.role === "VENDOR") return NextResponse.redirect(new URL("/dashboard/vendor", req.url));
             return NextResponse.redirect(new URL("/dashboard", req.url));
         }
 
         if (pathname === "/dashboard") {
             if (user.role === "SUPER_ADMIN") return NextResponse.redirect(new URL("/dashboard/super-admin", req.url));
             if (user.role === "ADMIN") return NextResponse.redirect(new URL("/dashboard/admin", req.url));
+            if (user.role === "VENDOR") return NextResponse.redirect(new URL("/dashboard/vendor", req.url));
             // Only Customers stay on /dashboard
         }
 
@@ -34,12 +36,12 @@ export async function middleware(req:NextRequest) {
             return NextResponse.redirect(new URL("/dashboard", req.url));
         }
         
-        if (pathname === "/dashboard/admin" && user.role !== "ADMIN") {
+        if (pathname.startsWith("/dashboard/admin") && user.role !== "ADMIN") {
             return NextResponse.redirect(new URL("/dashboard", req.url));
         }
-
-        if(pathname === "/dashboard" && user.role !== "CUSTOMER") {
-            return NextResponse.redirect(new URL("/login", req.url));
+        
+        if (pathname.startsWith("/dashboard/vendor") && user.role !== "VENDOR") {
+            return NextResponse.redirect(new URL("/dashboard", req.url));
         }
     }
 

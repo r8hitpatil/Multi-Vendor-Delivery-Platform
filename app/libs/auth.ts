@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { Role } from "../generated/prisma/enums";
 import { verifyToken } from "./jwt";
+import { prisma } from "./prisma";
 
 export async function getSession(){
   const cookieStore = await cookies();
@@ -19,8 +20,20 @@ export async function getSession(){
 
 export async function requireSuperAdmin(){
   const session = await getSession();
-  if(session?.role !== "SUPER_ADMIN"){
+  if(!session  || session.role !== "SUPER_ADMIN"){
     throw new Error ("Unauthorized : Only authorized roles are allowed")
+  }
+  const superAdmin = await prisma.user.findFirst({
+    where : {
+      email : session?.email
+    }
+  });
+
+  if(!superAdmin){
+    throw new Error("Super admin account not found");
+  }
+  if(superAdmin?.ban){
+    throw new Error("Super admin is banned!");
   }
   return session;
 }

@@ -42,7 +42,7 @@ model User {
   ban Boolean @default(false)
   status Status @default(PENDING)
 
-  adminId String?
+  adminId String? // this must be adminVendorId not adminId wrong annotation
   admin   User?   @relation("AdminVendors", fields: [adminId], references: [id])
   vendors User[]  @relation("AdminVendors")
 

@@ -6,7 +6,7 @@ import { Button } from "@base-ui/react";
 import { useEffect, useState } from "react";
 import { Checkbox } from "@/components/ui/checkbox";
 import type { User } from "@/app/generated/prisma/client";
-import { getDrivers, manageDriver, selectedDriver } from "@/app/api/admin/action";
+import { getDrivers, getPendingVendors, manageDriver, selectedDriver } from "@/app/api/admin/action";
 import PageLoading from "../loading";
 
 export default function ManageDriver(){
@@ -108,6 +108,6 @@ export default function ManageDriver(){
             </span>
         </div>
         }
-        </div>
+        </div>         
     )
 }

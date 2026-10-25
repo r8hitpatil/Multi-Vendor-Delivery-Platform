@@ -8,12 +8,16 @@ export const createStoreSchema = z.object({
 })
 
 export const productBodySchema = z.object({
-    name : z.string().trim().min(2,"Must be at least 2 character long"),
-    quantity : z.number().min(5,"Must be at least 2 character long")
+    name : z.string().trim().min(2,"Must be at least 2 characters long"),
+    quantity : z.number().min(1,"Quantity must be at least 1"),
+    price : z.number().min(1,"Price must be at least 1"),
+    discountedPrice : z.number().min(0,"Discounted price must be at least 0").optional(),
 })
 
 export const updateProductBodySchema = z.object({
     id : z.string().trim().min(1,"Must be at least 1 character long"),
-    name : z.string().trim().min(2,"Must be at least 2 character long").optional(),
-    quantity : z.number().min(5,"Must be at least 2 character long").optional(),
+    name : z.string().trim().min(2,"Must be at least 2 characters long").optional(),
+    quantity : z.number().min(1,"Quantity must be at least 1").optional(),
+    price : z.number().min(1,"Price must be at least 1").optional(),
+    discountedPrice : z.number().min(0,"Discounted price must be at least 0").optional(),
 })

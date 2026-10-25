@@ -53,7 +53,7 @@ export async function createStore(body : unknown){
 export async function createNewProduct(body:unknown){
     const res = productBodySchema.safeParse(body);
     if(!res.success) return zodError(res.error);
-    const { name , quantity } = res.data;
+    const { name , quantity , price , discountedPrice } = res.data;
     try {
         const usr = await requireVendor();
         if(usr.ban){
@@ -65,11 +65,19 @@ export async function createNewProduct(body:unknown){
                 message : usr.status === "ACCEPTED" ? "Store id not found" : "Request is pending"
             }
         }
+        if(discountedPrice !== undefined && discountedPrice !== null && discountedPrice >= price){
+            return {
+                success : false,
+                message : "Discounted price must be less than original price."
+            }
+        }
         await prisma.product.create({
             data : {
                 name,
                 quantity,
-                storeId : usr.storeId
+                storeId : usr.storeId,
+                price,
+                discountedPrice
             }
         })
         return {
@@ -104,10 +112,20 @@ export async function updateProduct(body:unknown){
         })
         if(!existing) {
             return { 
-                sucess : false as const,
+                success : false as const,
                 message : "Product not found in your store."
             }
         }
+
+        const effectivePrice = data.price ?? existing.price;
+        const effectiveDiscount = data.discountedPrice !== undefined ? data.discountedPrice : existing.discountedPrice;
+        if(effectiveDiscount !== undefined && effectiveDiscount !== null && effectiveDiscount >= effectivePrice){
+            return {
+                success: false as const,
+                message: "Discounted price must be less than original price."
+            }
+        }
+
         await prisma.product.update({
             where : {
                 id
@@ -116,7 +134,7 @@ export async function updateProduct(body:unknown){
         })
         return {
             success : true as const,
-            message : "Created product successfully."
+            message : "Product updated successfully."
         }
     } catch (error) {
         return handleActionError(error);
@@ -142,7 +160,7 @@ export async function getProducts(){
         })
         if(!existing) {
             return { 
-                sucess : false as const,
+                success : false as const,
                 message : "Product not found in your store."
             }
         }
@@ -176,7 +194,7 @@ export async function deleteProduct(id:string){
         })
         if(!existing) {
             return { 
-                sucess : false as const,
+                success : false as const,
                 message : "Product not found in your store."
             }
         }

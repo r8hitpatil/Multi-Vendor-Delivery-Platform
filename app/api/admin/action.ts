@@ -1,6 +1,6 @@
 "use server"
 
-import { Role } from "@/app/generated/prisma/enums"
+import { Role, Status } from "@/app/generated/prisma/enums"
 import { handleActionError } from "@/app/libs/errors";
 import { prisma } from "@/app/libs/prisma";
 import { requireAdmin } from "../auth/action";
@@ -34,6 +34,75 @@ export async function getVendors(){
         return handleActionError(error);
     }
 }
+
+export async function getPendingVendors(){
+    try {
+        const  { companyId,adminId } = await requireAdmin();
+        const res = await prisma.user.findMany({
+            where : {
+                companyId,
+                adminId,
+                status : Status.PENDING
+            }
+        })
+        return {
+            success : true,
+            message : "Pending vendors",
+            data : res
+        }
+    } catch (error:any) {
+        return handleActionError(error);
+    }
+}
+
+export async function approveVendor(id:string){
+    try {
+        const { adminId , companyId } = await requireAdmin();
+
+        await prisma.user.update({
+            where : {
+                id,
+                adminId,
+                companyId
+            },
+            data : {
+                status : Status.ACCEPTED
+            }
+        })
+
+        return {
+            success : true,
+            message : "Approved vendor"
+        }
+    } catch (error) {
+        return handleActionError(error);
+    }
+}
+
+export async function rejectVendor(id:string){
+    try {
+        const { adminId , companyId } = await requireAdmin();
+
+        await prisma.user.update({
+            where : {
+                id,
+                adminId,
+                companyId
+            },
+            data : {
+                status : Status.REJECTED
+            }
+        })
+
+        return {
+            success : true,
+            message : "Rejected vendor"
+        }
+    } catch (error) {
+        return handleActionError(error);
+    }
+}
+
 
 export async function updateVendor(body : unknown){
     const res = updateVendorSchema.safeParse(body);

@@ -19,7 +19,7 @@ export const createDriverSchema = z.object({
     email : z.string().trim().email("Invalid email address"),
     ban : z.boolean().default(false),
     addressDesc : z.string().trim().min(10,"Must be at least 10 character long"), 
-    pin_code : z.number().min(5,"Must be at least 5 character long"),
+    pin_code : z.coerce.number().int().min(1000,"Must be at least 4 digits"),
     lat : z.string().trim().min(1,"Must be at least 1 character long"),
     long : z.string().trim().min(1,"Must be at least 1 character long"),
     aadhar : z.string().trim().min(10,"Must be at least 10 character long"),

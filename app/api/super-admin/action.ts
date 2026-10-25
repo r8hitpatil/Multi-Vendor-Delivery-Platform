@@ -61,7 +61,7 @@ export async function getCompany(){
 export async function createAdmin(body: unknown) {
     const res = createAdminSchema.safeParse(body);
     if(!res.success) return zodError(res.error);
-    const { name, phone, email, password , companyId , ban, Role } = res.data;
+    const { name, phone, email, password , companyId , ban , status } = res.data;
 
     try {
         await requireSuperAdmin();
@@ -78,7 +78,7 @@ export async function createAdmin(body: unknown) {
 
         const hashPass = await argon.hash(password);
 
-        const createAdmin = await prisma.user.create({
+        await prisma.user.create({
             data: {
                 name,
                 phone,
@@ -86,18 +86,14 @@ export async function createAdmin(body: unknown) {
                 password: hashPass,
                 ban,
                 companyId,
-                Role
+                Role : Role.ADMIN,
+                status
             }
         })
 
         return {
             success: true as const,
-            message: "Created Admin successful",
-            data: {
-                id: createAdmin.id,
-                email: createAdmin.email,
-                role: createAdmin.Role,
-            },
+            message: "Created Admin successful"
         };
     } catch (error) {
         return handleActionError(error);
@@ -107,7 +103,7 @@ export async function createAdmin(body: unknown) {
 export async function manageAdmin(body: unknown) {
     const res = manageAdminSchema.safeParse(body);
     if(!res.success) return zodError(res.error);
-    const { name, phone, email, ban } = res.data;
+    const { name, phone, email, ban , status } = res.data;
 
     try {
         await requireSuperAdmin();
@@ -129,6 +125,7 @@ export async function manageAdmin(body: unknown) {
                 email,
                 phone,
                 ban,
+                status
             }
         })
 
@@ -162,10 +159,12 @@ export async function selectedAdmin(adminId: string) {
             success: true,
             message: `Selected admin`,// remove this flaw of sending user as response
             data: {
+                id: checkUser.id,
                 name: checkUser.name,
                 email: checkUser.email,
                 phone: checkUser.phone,
                 ban: checkUser.ban,
+                status: checkUser.status,
             }
         }
     } catch (error) {

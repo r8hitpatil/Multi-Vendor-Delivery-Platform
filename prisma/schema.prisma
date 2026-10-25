@@ -136,7 +136,8 @@ model Product {
   id String @id @default(uuid())
   name String
   quantity Int
-
+  price Int
+  discountedPrice Int?
   storeId String
   storeProducts Store @relation(fields: [storeId],references: [id])
 

@@ -49,3 +49,53 @@
 * **Source of Truth vs Stale Tokens:** Cookies/JWTs are snapshots; if an admin's company changes in the DB, the cookie remains stale until re-login. Always fetch the latest company from the database on write operations.
 * **Scoped Prisma Mutations:** Scope updates directly with `where: { id, companyName }` so cross-tenant modifications are rejected at the database level.
 
+---
+
+## Module 3: Advanced UI Standardization, Form Architecture & Production Polish
+
+### 1. React Hook Form & Zod Integration Patterns
+* **Zod Number Coercion vs RHF Resolvers:** Using `z.coerce.number()` inside schemas passed to `@hookform/resolvers/zod` frequently produces TypeScript type collisions because RHF infers form inputs as `string` while the resolver expects `number` or `unknown`. The robust pattern is string validation with `.refine((v) => !isNaN(Number(v)), "Must be a valid number")` paired with explicit `Number(data.field)` casting on form submission.
+* **Cross-Field Validation in Schemas:** When validating relational rules (e.g., `discountedPrice < price`), attach `.refine()` at the object level with a targeted `path`:
+  ```ts
+  .refine(
+    (data) => !data.discountedPrice || data.discountedPrice < data.price,
+    { message: "Discounted price must be lower than original price", path: ["discountedPrice"] }
+  )
+  ```
+  This automatically pipes the error to the correct field's `fieldState.error` in Base UI without custom form-level error plumbing.
+* **Client-Side Keystroke Sanitization:** Standard HTML input types like `type="tel"` still allow alphabetical keystrokes on desktop browsers. For strict numeric fields (Phone, Aadhar, PAN), intercept `onChange` directly:
+  ```tsx
+  onChange={(e) => {
+    const val = e.target.value.replace(/\D/g, "").slice(0, 10);
+    field.onChange(val);
+  }}
+  ```
+  Combine this with `inputMode="numeric"` to summon the mobile numeric keypad and prevent invalid inputs before validation even fires.
+
+### 2. Base UI & Shadcn Component Gotchas
+* **Controlled Value Initialization:** Passing `undefined` to a Base UI `<Select value={field.value}>` triggers an uncontrolled-to-controlled state flip warning. The `<Select>` wrapper must normalize `undefined -> null` or `""` internally.
+* **Array Truthiness Bug in JSX:** In JavaScript, an empty array `[]` is truthy (`Boolean([]) === true`). Writing `{ items ? <List /> : <Empty /> }` causes empty lists to render instead of fallback cards. Always check explicit length: `{ items && items.length > 0 ? <List /> : <Empty /> }`.
+* **Standardizing Modals & Drawers:** Replace raw modal overlays and ad-hoc drawers with accessible Base UI primitives (`<DialogPrimitive.Root>`, `<DialogContent>`). This guarantees automatic focus trapping, `Esc` keyboard dismissal, and screen reader announcements.
+* **Optimistic Local Filtering:** When performing admin actions (such as approving/rejecting pending vendors), update the UI state optimistically (`setPending(prev => prev.filter(v => v.id !== id))`) before or immediately alongside the server action to make the interface feel instantaneous.
+
+### 3. Server Action Typo Traps & State Leaks
+* **The Silent Single-Letter Typo (`sucess` vs `success`):** Writing `sucess: false as const` (single 'c') in server actions causes client-side `if (res.success)` checks to evaluate falsy without error propagation, leaving forms in indefinite loading states with zero UI feedback. Always enforce a shared action return type interface (`{ success: true; data: T } | { success: false; message: string }`).
+* **Transient Alert Leaks Across Navigation:** Storing success messages in client component state without an auto-dismiss cleanup causes stale banners to persist if the user navigates between dashboard routes. Always pair success alerts with auto-dismiss timers and cleanup:
+  ```tsx
+  useEffect(() => {
+    if (successMsg) {
+      const timer = setTimeout(() => setSuccessMsg(null), 3500);
+      return () => clearTimeout(timer);
+    }
+  }, [successMsg]);
+  ```
+
+### 4. Zero-Logic UI Refactoring Rules
+* **Strict Decoupling of Presentation and Domain Logic:** When modernizing UI with Base UI or React Hook Form, never alter server action signatures, parameter shapes, Prisma relations, hashing algorithms, or role guards.
+* **Preserving Existing Field Names:** Keep schema property keys identical (`price`, `quantity`, `companyId`, `adminId`) so backend mutations and database records remain seamlessly compatible.
+
+### 5. High-Performance Static Landing Pages
+* **Zero-Scroll Viewport Lock:** To create a dead-simple, distraction-free landing page matching Figma/design specs, wrap the root in `h-screen max-h-screen w-screen overflow-hidden` with a flex column layout (`justify-between`), preventing vertical scrollbars across desktop displays.
+* **Eliminating Edge Vignettes:** When placing studio render graphics on solid-color canvases, subtle monitor color profile variations (Display P3 vs sRGB) can expose 1-pixel edge borders. Use transparent alpha-channel PNGs or subtle edge masks (`[mask-image:radial-gradient(ellipse_at_center,black_75%,transparent_99%)]`) for seamless edge blending.
+
+

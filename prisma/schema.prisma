@@ -5,6 +5,7 @@ datasource db {
 generator client {
   provider = "prisma-client"
   output   = "../app/generated/prisma"
+  previewFeatures = ["views"]
 }
 
 enum Role {
@@ -142,4 +143,14 @@ model Product {
   storeProducts Store @relation(fields: [storeId],references: [id])
 
   orderItem OrderItem[]
+}
+
+view AvailableProduct {
+  id String @unique
+  name String
+  quantity Int
+  price Int
+  discountedPrice Int?
+  storeId String
+  isAvailable Boolean
 }

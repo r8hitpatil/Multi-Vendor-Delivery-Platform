@@ -131,30 +131,23 @@ export default function Home() {
               <ArrowRight className="h-4 w-4 text-neutral-400 group-hover:text-black group-hover:translate-x-0.5 transition-all" />
             </Link>
 
-            {/* Customer Option (User Button as requested) */}
-            <div className="flex items-center justify-between p-4 rounded-xl border border-neutral-200 bg-neutral-50/70 opacity-90">
+            {/* Customer Option */}
+            <Link
+              href="/signup"
+              onClick={() => setSignupModalOpen(false)}
+              className="flex items-center justify-between p-4 rounded-xl border border-neutral-200 hover:border-black hover:bg-neutral-50 transition-all group"
+            >
               <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-full bg-neutral-200/80 flex items-center justify-center text-neutral-500">
+                <div className="h-10 w-10 rounded-full bg-neutral-100 flex items-center justify-center text-black group-hover:bg-black group-hover:text-white transition-colors">
                   <User className="h-5 w-5" />
                 </div>
                 <div>
-                  <div className="flex items-center gap-2">
-                    <h3 className="font-semibold text-sm text-neutral-700">Customer Account</h3>
-                    <Badge variant="outline" className="text-[10px] py-0 px-1.5 bg-neutral-200/60 border-neutral-300 text-neutral-600">
-                      Coming Soon
-                    </Badge>
-                  </div>
-                  <p className="text-xs text-neutral-400">Normal customer ordering will open in Phase 2</p>
+                  <h3 className="font-semibold text-sm text-neutral-900">Customer Account</h3>
+                  <p className="text-xs text-neutral-500">Order from local vendors & track delivery</p>
                 </div>
               </div>
-
-              <button
-                disabled
-                className="px-3 py-1.5 rounded-lg text-xs font-medium bg-neutral-200 text-neutral-500 cursor-not-allowed"
-              >
-                Sign Up
-              </button>
-            </div>
+              <ArrowRight className="h-4 w-4 text-neutral-400 group-hover:text-black group-hover:translate-x-0.5 transition-all" />
+            </Link>
           </div>
 
           <div className="pt-2 text-center text-xs text-neutral-400">

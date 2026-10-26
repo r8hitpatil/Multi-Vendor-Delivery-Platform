@@ -5,9 +5,10 @@ import QueryProvider from "./provider/QueryProvider";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
 const inter = Inter({
-  variable: "--font-sans",
-  subsets : ["latin"],
-})
+  variable: "--font-inter",
+  subsets: ["latin"],
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: "Create Next App",
@@ -18,9 +19,9 @@ export default function RootLayout({ children }: Readonly<{children: React.React
   return (
     <html
       lang="en"
-      className={`${inter.variable} h-full antialiased`}
+      className={`${inter.variable} ${inter.className} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">
+      <body className="min-h-full flex flex-col font-sans">
        <main>
           <QueryProvider>
             <TooltipProvider>

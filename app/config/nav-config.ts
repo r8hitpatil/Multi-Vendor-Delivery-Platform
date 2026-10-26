@@ -15,7 +15,11 @@ export type Role = "SUPER_ADMIN" | "ADMIN" | "VENDOR" | "CUSTOMER"
 export const TableContents: NavContent = {
     SUPER_ADMIN: {
         title: "super-admin",
-        actions: [{
+        actions: [
+        {
+            title: "Home",
+            url: "/dashboard/super-admin",
+        },{
             title: "Create",
             url: "/dashboard/super-admin/create-admin",
         },
@@ -65,9 +69,16 @@ export const TableContents: NavContent = {
         ]
     },
     CUSTOMER : {
-        title : "home",
+        title : "customer",
         actions : [
-            
+            {
+                title : "Products",
+                url : "/products",
+            },
+            {
+                title : "My orders",
+                url : "/dashboard/customer/orders",
+            }
         ]
     }
 }

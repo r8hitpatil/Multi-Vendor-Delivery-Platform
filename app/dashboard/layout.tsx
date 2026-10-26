@@ -18,7 +18,7 @@ export default async function SidebarLayout({ children } : {children : ReactNode
     return (
         <SidebarProvider>
             <AppSidebar role={role}/>
-                <main className="p-6 flex-1">
+                <main className="p-3 sm:p-6 flex-1 min-w-0 overflow-x-hidden">
                     <SidebarTrigger/>
                     {children}
                 </main>

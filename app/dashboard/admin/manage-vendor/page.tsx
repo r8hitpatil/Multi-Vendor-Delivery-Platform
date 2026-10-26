@@ -1,245 +1,193 @@
 "use client"
 
-import { getVendors, updateVendor } from "@/app/api/admin/action";
-import { User } from "@/app/generated/prisma/client";
-import { Status } from "@/app/generated/prisma/enums";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Field,
-  FieldError,
-  FieldGroup,
-  FieldLabel,
-} from "@/components/ui/field";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { useEffect, useState } from "react";
-import PageLoading from "../loading";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { Controller, useForm } from "react-hook-form";
-import * as z from "zod";
+import { useEffect, useMemo, useState } from "react"
+import { getVendors } from "@/app/api/admin/action"
+import { Status } from "@/app/generated/prisma/enums"
+import { Vendor, getColumns } from "./columns"
+import { DataTable } from "./data-table"
+import { VendorViewSheet } from "./vendor-view-sheet"
+import { VendorEditSheet } from "./vendor-edit-sheet"
+import { Card, CardContent } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
 
-const formSchema = z.object({
-  id: z.string().trim().min(1, "Please select a vendor"),
-  status: z.nativeEnum(Status, { message: "Select a valid status" }),
-  ban: z.boolean(),
-});
+export default function ManageVendorPage() {
+  const [vendors, setVendors] = useState<Vendor[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState("")
 
-type FormValues = z.infer<typeof formSchema>;
+  // View / Edit mode and selected vendor states
+  const [mode, setMode] = useState<"view" | "edit">("view")
+  const [viewVendor, setViewVendor] = useState<Vendor | null>(null)
+  const [isViewOpen, setIsViewOpen] = useState(false)
+  const [editVendor, setEditVendor] = useState<Vendor | null>(null)
+  const [isEditOpen, setIsEditOpen] = useState(false)
 
-export default function ManageVendor() {
-  const [error, setError] = useState("");
-  const [vendor, setVendors] = useState<User[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-
-  const form = useForm<FormValues>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      id: "",
-      status: Status.PENDING,
-      ban: false,
-    },
-  });
-
-  const onVendorChange = (vendorId: string) => {
-    form.setValue("id", vendorId, { shouldValidate: true });
-    const selected = vendor.find((v) => v.id === vendorId);
-    if (selected) {
-      form.setValue("status", selected.status, { shouldValidate: true });
-      form.setValue("ban", Boolean(selected.ban), { shouldValidate: true });
-    }
-  };
-
-  async function onSubmit(data: FormValues) {
-    setError("");
-    const { id, status, ban } = data;
-    const res = await updateVendor({ id, status, ban });
-    if (res.success) {
-      console.log("Updated vendor");
-      setVendors((prev) =>
-        prev.map((v) => (v.id === id ? { ...v, status, ban } : v))
-      );
-    } else {
-      setError(res.message);
+  const loadVendors = async () => {
+    setIsLoading(true)
+    setError("")
+    try {
+      const res = await getVendors()
+      if (res.success && res.data) {
+        setVendors(res.data as unknown as Vendor[])
+      } else {
+        setVendors([])
+        if (res.message && res.message !== "No vendors found") {
+          setError(res.message)
+        }
+      }
+    } catch (err: any) {
+      setError(err?.message || "Failed to load vendors")
+    } finally {
+      setIsLoading(false)
     }
   }
 
   useEffect(() => {
-    const fetchVendors = async () => {
-      try {
-        const res = await getVendors();
-        if (res.success && res.data) {
-          setVendors(res.data);
-        } else if (!res.success && res.message !== "No vendors found") {
-          setError(res.message);
-        }
-      } catch (err: any) {
-        setError(err.message);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetchVendors();
-  }, []);
+    loadVendors()
+  }, [])
 
-  const vendorItems = vendor.map((item) => ({
-    value: item.id,
-    label: item.name,
-  }));
+  const handleView = (vendor: Vendor) => {
+    setViewVendor(vendor)
+    setIsViewOpen(true)
+  }
 
-  const statusItems = [
-    { value: Status.ACCEPTED, label: Status.ACCEPTED },
-    { value: Status.REJECTED, label: Status.REJECTED },
-    { value: Status.PENDING, label: Status.PENDING },
-  ];
+  const handleEdit = (vendor: Vendor) => {
+    setEditVendor(vendor)
+    setIsEditOpen(true)
+  }
 
-  if (isLoading) return <PageLoading />;
+  const handleRowClick = (vendor: Vendor) => {
+    if (mode === "edit") {
+      handleEdit(vendor)
+    } else {
+      handleView(vendor)
+    }
+  }
+
+  const columns = useMemo(
+    () =>
+      getColumns({
+        onEdit: handleEdit,
+        onView: handleView,
+        mode,
+      }),
+    [mode]
+  )
+
+  const stats = useMemo(() => {
+    const total = vendors.length
+    const accepted = vendors.filter((v) => v.status === Status.ACCEPTED).length
+    const pending = vendors.filter((v) => v.status === Status.PENDING).length
+    const banned = vendors.filter((v) => v.ban).length
+
+    return { total, accepted, pending, banned }
+  }, [vendors])
 
   return (
-    <div className="flex w-full justify-center p-4 md:p-8">
-      <Card className="w-full max-w-sm">
-        <CardHeader>
-          <CardTitle>Manage vendor</CardTitle>
-          <CardDescription>Manage vendor accounts</CardDescription>
-        </CardHeader>
-        <form onSubmit={form.handleSubmit(onSubmit)}>
-          <CardContent>
-            {error && (
-              <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive mb-4">
-                {error}
-              </div>
-            )}
-            <FieldGroup className="flex flex-col gap-4">
-              <Controller
-                name="ban"
-                control={form.control}
-                render={({ field, fieldState }) => (
-                  <Field
-                    orientation="horizontal"
-                    data-invalid={fieldState.invalid}
-                    className="items-center"
-                  >
-                    <Checkbox
-                      id="form-vendor-ban"
-                      aria-invalid={fieldState.invalid}
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                    />
-                    <FieldLabel
-                      htmlFor="form-vendor-ban"
-                      className="cursor-pointer font-normal"
-                    >
-                      Ban
-                    </FieldLabel>
-                    {fieldState.invalid && (
-                      <FieldError errors={[fieldState.error]} />
-                    )}
-                  </Field>
-                )}
-              />
-
-              <Controller
-                name="id"
-                control={form.control}
-                render={({ field, fieldState }) => (
-                  <Field data-invalid={fieldState.invalid}>
-                    <FieldLabel htmlFor="form-vendor-id">
-                      Select Vendor
-                    </FieldLabel>
-                    <Select
-                      name={field.name}
-                      value={field.value}
-                      onValueChange={(val) => {
-                        if (val) onVendorChange(val);
-                      }}
-                      items={vendorItems}
-                    >
-                      <SelectTrigger
-                        id="form-vendor-id"
-                        aria-invalid={fieldState.invalid}
-                        className="w-full"
-                      >
-                        <SelectValue placeholder="--select option--" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {vendor && vendor.length > 0 ? (
-                          vendor.map((item) => (
-                            <SelectItem key={item.id} value={item.id}>
-                              {item.name}
-                            </SelectItem>
-                          ))
-                        ) : (
-                          <SelectItem value="" disabled>
-                            No vendors available
-                          </SelectItem>
-                        )}
-                      </SelectContent>
-                    </Select>
-                    {fieldState.invalid && (
-                      <FieldError errors={[fieldState.error]} />
-                    )}
-                  </Field>
-                )}
-              />
-
-              <Controller
-                name="status"
-                control={form.control}
-                render={({ field, fieldState }) => (
-                  <Field data-invalid={fieldState.invalid}>
-                    <FieldLabel htmlFor="form-vendor-status">
-                      Select Status
-                    </FieldLabel>
-                    <Select
-                      name={field.name}
-                      value={field.value}
-                      onValueChange={field.onChange}
-                      items={statusItems}
-                    >
-                      <SelectTrigger
-                        id="form-vendor-status"
-                        aria-invalid={fieldState.invalid}
-                        className="w-full"
-                      >
-                        <SelectValue placeholder="--select option--" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value={Status.ACCEPTED}>
-                          {Status.ACCEPTED}
-                        </SelectItem>
-                        <SelectItem value={Status.REJECTED}>
-                          {Status.REJECTED}
-                        </SelectItem>
-                        <SelectItem value={Status.PENDING}>
-                          {Status.PENDING}
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
-                    {fieldState.invalid && (
-                      <FieldError errors={[fieldState.error]} />
-                    )}
-                  </Field>
-                )}
-              />
-            </FieldGroup>
-          </CardContent>
-          <div className="p-4 pt-2">
-            <Button
-              type="submit"
-              className="w-full"
-              disabled={form.formState.isSubmitting}
+    <div className="w-full space-y-5 max-w-5xl mx-auto min-w-0">
+      {/* Page Header */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-border pb-4">
+        <div className="space-y-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight text-foreground uppercase">
+              Manage Vendors
+            </h1>
+            <Badge
+              variant="outline"
+              className="rounded-none text-[11px] font-mono uppercase tracking-wider border-foreground/30 px-1.5 py-0.5 shrink-0"
             >
-              {form.formState.isSubmitting ? "Updating..." : "Update Vendor"}
-            </Button>
+              Company Admin
+            </Badge>
           </div>
-        </form>
-      </Card>
+          <p className="text-xs sm:text-sm text-muted-foreground">
+            Review vendor applications, store access, and operational statuses.
+          </p>
+        </div>
+      </div>
+
+      {/* Global Error Notice if any */}
+      {error && (
+        <div className="rounded-none border border-foreground/30 bg-muted/20 p-3 text-xs font-mono text-foreground uppercase">
+          {error}
+        </div>
+      )}
+
+      {/* Top Metric Cards (Black & White, No Rounded Corners, No decorative icons) */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-4">
+        <Card className="rounded-none border border-border shadow-none bg-card">
+          <CardContent className="p-4 space-y-1">
+            <p className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-muted-foreground">
+              Total Vendors
+            </p>
+            <p className="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground font-mono">
+              {isLoading ? "—" : stats.total}
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card className="rounded-none border border-border shadow-none bg-card">
+          <CardContent className="p-4 space-y-1">
+            <p className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-muted-foreground">
+              Accepted Vendors
+            </p>
+            <p className="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground font-mono">
+              {isLoading ? "—" : stats.accepted}
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card className="rounded-none border border-border shadow-none bg-card">
+          <CardContent className="p-4 space-y-1">
+            <p className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-muted-foreground">
+              Pending Review
+            </p>
+            <p className="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground font-mono">
+              {isLoading ? "—" : stats.pending}
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card className="rounded-none border border-border shadow-none bg-card">
+          <CardContent className="p-4 space-y-1">
+            <p className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-muted-foreground">
+              Banned Accounts
+            </p>
+            <p className="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground font-mono">
+              {isLoading ? "—" : stats.banned}
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Main Data Table */}
+      <DataTable
+        columns={columns}
+        data={vendors}
+        isLoading={isLoading}
+        onRefresh={loadVendors}
+        mode={mode}
+        onToggleMode={setMode}
+        onRowClick={handleRowClick}
+      />
+
+      {/* View-Only Vendor Details Sheet */}
+      <VendorViewSheet
+        vendor={viewVendor}
+        open={isViewOpen}
+        onOpenChange={setIsViewOpen}
+        onEdit={(vendor) => {
+          setIsViewOpen(false)
+          handleEdit(vendor)
+        }}
+      />
+
+      {/* Editable Vendor Status & Ban Sheet */}
+      <VendorEditSheet
+        vendor={editVendor}
+        open={isEditOpen}
+        onOpenChange={setIsEditOpen}
+        onSuccess={loadVendors}
+      />
     </div>
-  );
+  )
 }

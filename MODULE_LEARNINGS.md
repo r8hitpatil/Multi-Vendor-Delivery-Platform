@@ -97,5 +97,26 @@
 ### 5. High-Performance Static Landing Pages
 * **Zero-Scroll Viewport Lock:** To create a dead-simple, distraction-free landing page matching Figma/design specs, wrap the root in `h-screen max-h-screen w-screen overflow-hidden` with a flex column layout (`justify-between`), preventing vertical scrollbars across desktop displays.
 * **Eliminating Edge Vignettes:** When placing studio render graphics on solid-color canvases, subtle monitor color profile variations (Display P3 vs sRGB) can expose 1-pixel edge borders. Use transparent alpha-channel PNGs or subtle edge masks (`[mask-image:radial-gradient(ellipse_at_center,black_75%,transparent_99%)]`) for seamless edge blending.
+### 6. Tailwind v4 `@theme inline` Font Variable Cycles
+* **The Self-Referential Variable Trap:** Defining `--font-sans: var(--font-sans)` in `@theme inline` causes Tailwind to output `:root, :host { --font-sans: var(--font-sans); }`. Under CSS Custom Properties specs, a variable referencing itself creates a cyclic dependency that is invalid at computed-value time. The browser discards the font and falls back to system serif (Times New Roman).
+* **The Clean Resolution:** Always give the Next.js font loader an explicit variable name (e.g. `variable: "--font-inter"`), apply `${inter.variable} ${inter.className}` to `<html>`, and map Tailwind's `--font-sans` with an explicit fallback stack:
+  ```css
+  @theme inline {
+    --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  }
+  ```
 
+### 7. Mobile Sidebar Drawer Navigation Auto-Dismiss
+* **The Sticky Sheet Problem:** In Next.js App Router, navigating between pages via `<Link>` is performed client-side without full-page reloads. When using Base UI / Shadcn mobile drawers (`<Sheet open={openMobile}>`), navigating to a new URL leaves `openMobile: true`, forcing the user to manually dismiss the overlay on phone screens.
+* **Dual-Trigger Dismissal Architecture:** Always pair immediate click-time dismissal with reactive pathname change listener:
+  ```tsx
+  const { setOpenMobile, isMobile } = useSidebar();
+  const pathname = usePathname();
 
+  useEffect(() => {
+    if (isMobile) setOpenMobile(false);
+  }, [pathname, isMobile, setOpenMobile]);
+
+  // And in JSX:
+  <Link href={item.url} onClick={() => { if (isMobile) setOpenMobile(false); }} />
+  ```

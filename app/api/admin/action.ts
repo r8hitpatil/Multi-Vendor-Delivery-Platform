@@ -5,7 +5,6 @@ import { handleActionError } from "@/app/libs/errors";
 import { prisma } from "@/app/libs/prisma";
 import { requireAdmin } from "../auth/action";
 import * as argon from 'argon2';
-import { createVendorSchema } from "@/app/(auth)/schema";
 import { zodError } from "@/app/libs/zod-error";
 import { createDriverSchema, manageDriverSchema, updateVendorSchema } from "./schema";
 
@@ -252,37 +251,6 @@ export async function manageDriver(body:unknown){
         return {
             success : true,
             message : "Driver updated"
-        }
-    } catch (error) {
-        return handleActionError(error);
-    }
-}
-
-export async function createVendor(body:unknown){
-    
-    const res = createVendorSchema.safeParse(body);
-    if(!res.success) return zodError(res.error);
-    const { name, email , password , aadhar , phone , pan , companyId , adminId } = res.data;
-
-    try {
-        const hashedPass = await argon.hash(password);
-        
-        await prisma.user.create({
-            data : {
-                name,
-                email,
-                password : hashedPass,
-                aadhar,
-                pan,
-                phone,
-                companyId,
-                Role : Role.VENDOR,
-                adminId
-            }
-        })
-        return {
-            success : true as const,
-            message : "Created new vendor"
         }
     } catch (error) {
         return handleActionError(error);

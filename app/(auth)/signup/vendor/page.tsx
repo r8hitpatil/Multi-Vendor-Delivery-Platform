@@ -1,8 +1,6 @@
 "use client"
 
-import { createVendor, getAdmins } from "@/app/api/admin/action";
 import { getCompany } from "@/app/api/super-admin/action";
-import { createVendorSchema } from "@/app/(auth)/schema";
 import { Company, User } from "@/app/generated/prisma/client";
 import PageLoading from "@/components/page-loading";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -34,6 +32,9 @@ import { Controller, useForm } from "react-hook-form";
 import * as z from "zod";
 import Link from "next/link";
 import { cn } from "cn";
+import { getAdmins } from "@/app/api/admin/action";
+import { createVendor } from "@/app/api/auth/action";
+import { createVendorSchema } from "@/app/api/auth/schema";
 
 type FormValues = z.infer<typeof createVendorSchema>;
 

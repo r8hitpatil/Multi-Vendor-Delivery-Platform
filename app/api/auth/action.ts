@@ -6,8 +6,10 @@ import { createToken } from "@/app/libs/jwt";
 import { prisma } from "@/app/libs/prisma";
 import * as argon from "argon2";
 import { cookies } from "next/headers";
-import { loginUserSchema } from "./schema";
+import { createCustomerSchema, createVendorSchema, loginUserSchema } from "./schema";
 import { zodError } from "@/app/libs/zod-error";
+import { Role, Status } from "@/app/generated/prisma/enums";
+import { z } from 'zod';
 
 export async function loginAction(body: unknown) {
   try {
@@ -128,4 +130,67 @@ export async function requireVendor(){
     status : vendor.status,
     ban : vendor.ban
   };
+}
+
+export async function logout() {
+  const cookie = await cookies();
+  cookie.delete('access_token');
+}
+
+
+export async function createVendor(body:unknown){
+    
+    const res = createVendorSchema.safeParse(body);
+    if(!res.success) return zodError(res.error);
+    const { name, email , password , aadhar , phone , pan , companyId , adminId } = res.data;
+
+    try {
+        const hashedPass = await argon.hash(password);
+        
+        await prisma.user.create({
+            data : {
+                name,
+                email,
+                password : hashedPass,
+                aadhar,
+                pan,
+                phone,
+                companyId,
+                Role : Role.VENDOR,
+                adminId
+            }
+        })
+        return {
+            success : true as const,
+            message : "Created new vendor"
+        }
+    } catch (error) {
+        return handleActionError(error);
+    }
+}
+
+export async function userSignup(body:unknown){
+  const res = createCustomerSchema.safeParse(body);
+  if(!res.success) return zodError(res.error);
+  const { name, email , password , phone  } = res.data;
+  try {
+      const hashedPass = await argon.hash(password);
+      
+      await prisma.user.create({
+          data : {
+              name,
+              email,
+              password : hashedPass,
+              phone,
+              Role : Role.CUSTOMER,
+              status : Status.ACCEPTED
+          }
+      })
+      return {
+          success : true as const,
+          message : "Created new user successfully"
+      }
+  } catch (error) {
+      return handleActionError(error);
+  }
 }

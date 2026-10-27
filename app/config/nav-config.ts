@@ -73,11 +73,14 @@ export const TableContents: NavContent = {
         actions : [
             {
                 title : "Products",
-                url : "/products",
+                url : "/dashboard/customer",
             },
             {
-                title : "My orders",
-                url : "/dashboard/customer/orders",
+                title : "Cart",
+                url : "/dashboard/customer/cart",
+            },{
+                title : "Your orders",
+                url : "/dashboard/customer/orders"
             }
         ]
     }

@@ -152,5 +152,6 @@ view AvailableProduct {
   price Int
   discountedPrice Int?
   storeId String
+  storeName String?
   isAvailable Boolean
 }

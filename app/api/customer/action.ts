@@ -1,3 +1,5 @@
+"use server"
+
 import { handleActionError } from "@/app/libs/errors";
 import { prisma } from "@/app/libs/prisma";
 

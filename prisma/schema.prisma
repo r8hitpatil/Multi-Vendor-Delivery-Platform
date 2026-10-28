@@ -58,7 +58,8 @@ model User {
   company Company? @relation(fields: [companyId], references: [id])
   
   store Store?
-  address Address[] 
+  address Address[]
+  cart Cart?
 }
 
 model Company {
@@ -143,6 +144,7 @@ model Product {
   storeProducts Store @relation(fields: [storeId],references: [id])
 
   orderItem OrderItem[]
+  cartItems CartItems[]
 }
 
 view AvailableProduct {
@@ -154,4 +156,23 @@ view AvailableProduct {
   storeId String
   storeName String?
   isAvailable Boolean
+}
+
+model Cart {
+  id String @id @default(uuid())
+  userId String @unique
+  user User @relation(fields: [userId],references: [id])
+  items CartItems[]
+}
+
+model CartItems {
+  id String @id @default(uuid())
+  cartId String
+  cart Cart @relation(fields: [cartId],references: [id])
+
+  productId String
+  product Product @relation(fields: [productId],references: [id])
+
+  quantity Int @default(1)
+  @@unique([cartId,productId]) // composite key
 }

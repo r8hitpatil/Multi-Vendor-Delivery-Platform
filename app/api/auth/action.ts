@@ -194,3 +194,29 @@ export async function userSignup(body:unknown){
       return handleActionError(error);
   }
 }
+
+export async function requireCustomer(){
+  const session = await getSession();
+  if(session?.role !== "CUSTOMER"){
+    throw new Error ("Unauthorized : Only authorized roles are allowed")
+  }
+  const customer = await prisma.user.findUnique({
+    where : {
+      email : session.email
+    },
+    select : {
+      id : true,
+      ban : true
+    }
+  })
+  if(!customer){
+    throw new Error("User not found");
+  }
+  if(customer.ban){
+    throw new Error("Customer account is banned");
+  }
+  return {
+    customerId : customer.id,
+  };
+}
+

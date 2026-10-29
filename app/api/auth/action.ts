@@ -206,7 +206,8 @@ export async function requireCustomer(){
     },
     select : {
       id : true,
-      ban : true
+      ban : true,
+      address : true,
     }
   })
   if(!customer){
@@ -217,6 +218,7 @@ export async function requireCustomer(){
   }
   return {
     customerId : customer.id,
+    address : customer.address
   };
 }
 

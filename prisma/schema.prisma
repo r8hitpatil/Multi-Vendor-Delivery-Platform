@@ -52,13 +52,12 @@ model User {
   drivers User[] @relation("AdminDrivers")
 
   orders Order[]
-  storeOrders OrderItem[] @relation("VendorOrderItems")
   driverOrders OrderItem[] @relation("DriverOrderItems")
   companyId String?
   company Company? @relation(fields: [companyId], references: [id])
   
   store Store?
-  address Address[]
+  address Address?
   cart Cart?
 }
 
@@ -80,7 +79,7 @@ model Address {
   lat String
   long String
 
-  userId String?
+  userId String? @unique
   user User? @relation(fields: [userId],references: [id])
   company Company?
 }
@@ -90,7 +89,6 @@ model Store {
   vendorId String @unique
   vendor User @relation(fields: [vendorId],references: [id])
   products Product[]
-  orderItem OrderItem[]
   address StoreAddress?
 }
 
@@ -108,7 +106,6 @@ model StoreAddress {
 model Order {
   id String @id @default(uuid())
   customerId String
-  driverId String
 
   customer User @relation(fields: [customerId],references: [id])
   orderItems OrderItem[]
@@ -116,22 +113,16 @@ model Order {
 
 model OrderItem {
   id String @id @default(uuid())
-  orderStatus OrderStatus
-
+  orderStatus OrderStatus @default(IN_TRANSIT)
+  quantity Int
   orderId String
   order Order @relation(fields: [orderId],references: [id])
 
   productId String
   product Product @relation(fields: [productId],references: [id])
-
-  storeId String
-  store Store @relation(fields: [storeId], references: [id])
-
-  vendorId String
-  vendor User @relation("VendorOrderItems", fields: [vendorId],references: [id])
-
-  driverId String
-  driver User @relation("DriverOrderItems", fields: [driverId],references: [id])
+  price Int
+  driverId String?
+  driver User? @relation("DriverOrderItems", fields: [driverId],references: [id])
 }
 
 model Product {

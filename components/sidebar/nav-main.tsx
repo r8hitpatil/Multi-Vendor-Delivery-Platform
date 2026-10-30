@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -43,13 +42,6 @@ export function NavMain({ roleIs, groups }: { roleIs: Role; groups: NavContent }
   const content = groups?.[roleIs];
   const { setOpenMobile, isMobile } = useSidebar();
   const pathname = usePathname();
-
-  // Auto-close the mobile sidebar sheet on route change
-  useEffect(() => {
-    if (isMobile) {
-      setOpenMobile(false);
-    }
-  }, [pathname, isMobile, setOpenMobile]);
 
   if (!content || !content.actions) return null;
 

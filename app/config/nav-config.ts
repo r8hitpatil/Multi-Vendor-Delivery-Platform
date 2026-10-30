@@ -65,6 +65,10 @@ export const TableContents: NavContent = {
             {
                 title : "Manage product",
                 url : "/dashboard/vendor/manage-product"
+            },
+            {
+                title : "Manage orders",
+                url : "/dashboard/vendor/manage-orders"
             }
         ]
     },

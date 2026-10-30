@@ -211,3 +211,63 @@ export async function deleteProduct(id:string){
         return handleActionError(error);
     }
 }
+
+export async function getOrderedProducts() {
+  try {
+    const usr = await requireVendor();
+    if (usr.ban) {
+      throw new Error("Vendor is banned");
+    }
+    if (!usr.storeId) {
+      return {
+        success: false as const,
+        message: usr.status === "ACCEPTED" ? "Store id not found" : "Request is pending",
+      };
+    }
+    const orderItems = await prisma.orderItem.findMany({
+      where: {
+        product: {
+          storeId: usr.storeId,
+        },
+      },
+      include: {
+        product: {
+          select: {
+            id: true,
+            name: true,
+            price: true,
+            discountedPrice: true,
+          },
+        },
+        order: {
+          select: {
+            id: true,
+            customer: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                phone: true,
+                address: true,
+              },
+            },
+          },
+        },
+        driver: {
+          select: {
+            id: true,
+            name: true,
+            phone: true,
+          },
+        },
+      },
+    });
+    return {
+      success: true as const,
+      message: "Orders at the store.",
+      data: orderItems,
+    };
+  } catch (error) {
+    return handleActionError(error);
+  }
+}

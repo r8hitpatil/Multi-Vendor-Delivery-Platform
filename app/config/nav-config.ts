@@ -10,7 +10,7 @@ export type NavItem = {
 
 export type NavContent = Record<Role,NavItem>
 
-export type Role = "SUPER_ADMIN" | "ADMIN" | "VENDOR" | "CUSTOMER"
+export type Role = "SUPER_ADMIN" | "ADMIN" | "VENDOR" | "CUSTOMER" | "DRIVER"
 
 export const TableContents: NavContent = {
     SUPER_ADMIN: {
@@ -85,6 +85,19 @@ export const TableContents: NavContent = {
             },{
                 title : "Your orders",
                 url : "/dashboard/customer/orders"
+            }
+        ]
+    },
+    DRIVER : {
+        title : "driver",
+        actions : [
+            {
+                title : "home",
+                url : "/dashboard/driver"
+            },
+            {
+                title : "orders",
+                url : "/dashboard/driver/orders"
             }
         ]
     }

@@ -65,6 +65,9 @@ export default function LoginPage() {
                 case 'VENDOR':
                     router.push('/dashboard/vendor');
                     break;
+                case 'DRIVER':
+                    router.push('/dashboard/driver');
+                    break;
                 case 'CUSTOMER':
                     router.push('/dashboard');
                     break;

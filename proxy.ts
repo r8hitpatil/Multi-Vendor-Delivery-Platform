@@ -22,6 +22,7 @@ export async function proxy(req:NextRequest) {
             if (user.role === "SUPER_ADMIN") return NextResponse.redirect(new URL("/dashboard/super-admin", req.url));
             if (user.role === "ADMIN") return NextResponse.redirect(new URL("/dashboard/admin", req.url));
             if (user.role === "VENDOR") return NextResponse.redirect(new URL("/dashboard/vendor", req.url));
+            if (user.role === "DRIVER") return NextResponse.redirect(new URL("/dashboard/driver", req.url));
             return NextResponse.redirect(new URL("/dashboard", req.url));
         }
 
@@ -29,6 +30,7 @@ export async function proxy(req:NextRequest) {
             if (user.role === "SUPER_ADMIN") return NextResponse.redirect(new URL("/dashboard/super-admin", req.url));
             if (user.role === "ADMIN") return NextResponse.redirect(new URL("/dashboard/admin", req.url));
             if (user.role === "VENDOR") return NextResponse.redirect(new URL("/dashboard/vendor", req.url));
+            if (user.role === "DRIVER") return NextResponse.redirect(new URL("/dashboard/driver", req.url));
             // Only Customers stay on /dashboard
         }
 
@@ -41,6 +43,10 @@ export async function proxy(req:NextRequest) {
         }
         
         if (pathname.startsWith("/dashboard/vendor") && user.role !== "VENDOR") {
+            return NextResponse.redirect(new URL("/dashboard", req.url));
+        }
+
+        if (pathname.startsWith("/dashboard/driver") && user.role !== "DRIVER") {
             return NextResponse.redirect(new URL("/dashboard", req.url));
         }
     }

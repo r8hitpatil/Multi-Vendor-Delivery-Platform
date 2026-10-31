@@ -5,6 +5,10 @@ import { requireVendor } from "../auth/action";
 import { handleActionError } from "@/app/libs/errors";
 import { createStoreSchema, productBodySchema, updateProductBodySchema } from "./schema";
 import { zodError } from "@/app/libs/zod-error";
+import { OrderStatus } from "@/app/generated/prisma/enums";
+import { collection, doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore";
+import { db } from "@/app/libs/firebase";
+import { success } from "zod";
 
 export async function createStore(body : unknown){
     const res = createStoreSchema.safeParse(body);
@@ -30,7 +34,7 @@ export async function createStore(body : unknown){
         }
         await prisma.store.create({
             data : {    
-            vendorId : usr.adminId,
+            vendorId : usr.vendorId,
                 address : {
                     create : {
                         storeName,
@@ -58,6 +62,13 @@ export async function createNewProduct(body:unknown){
         const usr = await requireVendor();
         if(usr.ban){
             throw new Error("Vendor is banned");
+        }
+        if(usr.status!=="ACCEPTED"){
+            return {
+                success : false,
+                message : usr.status === "PENDING" ? "Your vendor account is pending admin approval" : 
+                "Your vendor account is rejected"
+            }
         }
         if(!usr.storeId){
             return {
@@ -97,6 +108,13 @@ export async function updateProduct(body:unknown){
         const usr = await requireVendor();
         if(usr.ban){
             throw new Error("Vendor is banned");
+        }
+        if(usr.status!=="ACCEPTED"){
+            return {
+                success : false,
+                message : usr.status === "PENDING" ? "Your vendor account is pending admin approval" : 
+                "Your vendor account is rejected"
+            }
         }
         if(!usr.storeId){
             return {
@@ -147,6 +165,13 @@ export async function getProducts(){
         if(usr.ban){
             throw new Error("Vendor is banned");
         }
+        if(usr.status!=="ACCEPTED"){
+            return {
+                success : false,
+                message : usr.status === "PENDING" ? "Your vendor account is pending admin approval" : 
+                "Your vendor account is rejected"
+            }
+        }
         if(!usr.storeId){
             return {
                 success : false as  const,
@@ -179,6 +204,13 @@ export async function deleteProduct(id:string){
         const usr = await requireVendor();
         if(usr.ban){
             throw new Error("Vendor is banned");
+        }
+        if(usr.status!=="ACCEPTED"){
+            return {
+                success : false,
+                message : usr.status === "PENDING" ? "Your vendor account is pending admin approval" : 
+                "Your vendor account is rejected"
+            }
         }
         if(!usr.storeId){
             return {
@@ -218,6 +250,13 @@ export async function getOrderedProducts() {
     if (usr.ban) {
       throw new Error("Vendor is banned");
     }
+    if(usr.status!=="ACCEPTED"){
+        return {
+            success : false,
+            message : usr.status === "PENDING" ? "Your vendor account is pending admin approval" : 
+            "Your vendor account is rejected"
+        }
+    }
     if (!usr.storeId) {
       return {
         success: false as const,
@@ -231,14 +270,7 @@ export async function getOrderedProducts() {
         },
       },
       include: {
-        product: {
-          select: {
-            id: true,
-            name: true,
-            price: true,
-            discountedPrice: true,
-          },
-        },
+        product: { select: { id: true, name: true } },
         order: {
           select: {
             id: true,
@@ -270,4 +302,132 @@ export async function getOrderedProducts() {
   } catch (error) {
     return handleActionError(error);
   }
+}
+
+export async function changeOrderStatus(id:string,status:OrderStatus){
+    try {
+        const usr = await requireVendor();
+        if (usr.ban) {
+          throw new Error("Vendor is banned");
+        }
+        if(usr.status!=="ACCEPTED"){
+            return {
+                success : false,
+                message : usr.status === "PENDING" ? "Your vendor account is pending admin approval" : 
+                "Your vendor account is rejected"
+            }
+        }
+        if (!usr.storeId) {
+          return {
+            success: false as const,
+            message: usr.status === "ACCEPTED" ? "Store id not found" : "Request is pending",
+          };
+        }
+
+        if(!Object.values(OrderStatus).includes(status)) {
+            return {
+                success : false as const,
+                message : "Invalid order status value"
+            }
+        }
+
+        const updated = await prisma.orderItem.update({
+            where : {
+                id,
+                product : {
+                    storeId : usr.storeId
+                }
+            },
+            data : {
+                orderStatus : status
+            }
+        })
+        return {
+            success : true as const,
+            message : "Changes the order status",
+            data : updated
+        }
+    } catch (error) {
+        return handleActionError(error);
+    }
+}
+    
+export async function notifyDriverReq(id:string){
+    try {
+        const usr = await requireVendor();
+        if(usr.ban){
+            throw new Error("Vendor is banned");
+        }
+        if(usr.status!=="ACCEPTED"){
+            return {
+                success : false,
+                message : usr.status === "PENDING" ? "Your vendor account is pending admin approval" : 
+                "Your vendor account is rejected"
+            }
+        }
+        const item = await prisma.orderItem.findUnique({
+            where : {
+                id,
+            },
+            include : {
+                order : {
+                    select : {
+                        customer : {
+                            select : {
+                                name : true,
+                                address : true
+                            }
+                        }
+                    }
+                },
+                product : {
+                    select : {
+                        name : true,
+                    }
+                },
+            }
+        })
+        if(!item){
+            throw new Error("Order item not found");
+        }
+        if(!item.order.customer.address?.address){
+            throw new Error("No address found")
+        }
+        if(!usr.adminId){
+            throw new Error("No admin assigned")
+        }
+        if(item.driverId){
+            return {
+                success : false as const,
+                message : "A driver is already assigned to this order."
+            }
+        }
+
+        const existingReq = await getDoc(doc(db, "driver_req", item.id));
+        if (existingReq.exists() && existingReq.data()?.status === "PENDING") {
+          return {
+            success: false as const,
+            message: "A driver request is already pending with the admin.",
+          };
+        }
+
+        await setDoc(doc(db,"driver_req",item.id),{
+            adminId : usr.adminId,
+            vendorId : usr.vendorId,
+            storeId : usr.storeId,
+            order : item.order,
+            orderId : item.orderId,
+            productName : item.product.name,
+            customerName : item.order.customer.name,
+            deliveryAddress : item.order.customer.address.address,
+            status : "PENDING",
+            createdAt : serverTimestamp()
+        })
+        return {
+            success : true,
+            message : "Driver request was sent in real time."
+        }
+    } catch (error) {
+        return handleActionError(error);
+    }
 }

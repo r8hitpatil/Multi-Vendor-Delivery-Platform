@@ -9,7 +9,6 @@ import { cookies } from "next/headers";
 import { createCustomerSchema, createVendorSchema, loginUserSchema } from "./schema";
 import { zodError } from "@/app/libs/zod-error";
 import { Role, Status } from "@/app/generated/prisma/enums";
-import { z } from 'zod';
 
 export async function loginAction(body: unknown) {
   try {
@@ -118,14 +117,16 @@ export async function requireVendor(){
         select : {
           id : true,
         }
-      }
+      },
+      adminId : true
     }
   })
   if(!vendor?.companyId){
     throw new Error("Vendor is not assigned to any admin");
   }
   return {
-    adminId : vendor.id,
+    adminId : vendor.adminId,
+    vendorId : vendor.id,
     storeId : vendor.store?.id,
     status : vendor.status,
     ban : vendor.ban
@@ -222,3 +223,7 @@ export async function requireCustomer(){
   };
 }
 
+export async function getAdminId() {
+  const admin = await requireAdmin();
+  return admin.adminId;
+}

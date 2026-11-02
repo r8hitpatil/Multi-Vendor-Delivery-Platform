@@ -92,11 +92,11 @@ export const TableContents: NavContent = {
         title : "driver",
         actions : [
             {
-                title : "home",
+                title : "Home",
                 url : "/dashboard/driver"
             },
             {
-                title : "orders",
+                title : "Orders",
                 url : "/dashboard/driver/orders"
             }
         ]

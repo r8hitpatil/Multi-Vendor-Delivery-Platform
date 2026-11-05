@@ -39,6 +39,9 @@ const formSchema = z.object({
     companyId : z
         .string()
         .min(1,"Company id is required"),
+    range : z
+        .number()
+        .min(1,"Enter min kms of range"),
     status : z
         .nativeEnum(Status,{ message : "Select valid status" }),
     ban : z
@@ -62,13 +65,14 @@ export default function CreateAdmin(){
             email : "",
             companyId : "",
             status : undefined,
-            ban : false
+            ban : false,
+            range : 0
         },
     })
 
     async function onSubmit(data : FormValues){
-        const { name,phone,email,companyId,password,ban, status } = data;
-        const res = await createAdmin({ name,phone,email,companyId,password,ban, status });
+        const { name,phone,email,companyId,password,ban, status,range } = data;
+        const res = await createAdmin({ name,phone,email,companyId,password,ban, status,range });
         if(res.success){
             console.log('Created admin')
         }
@@ -165,6 +169,29 @@ export default function CreateAdmin(){
                                 aria-invalid={fieldState.invalid}
                                 placeholder="9100091000"
                                 autoComplete="tel"
+                              />
+                              {fieldState.invalid && (
+                                <FieldError errors={[fieldState.error]} />
+                              )}
+                            </Field>
+                          )}
+                        />
+                        <Controller
+                          name="range"
+                          control={form.control}
+                          render={({ field, fieldState }) => (
+                            <Field data-invalid={fieldState.invalid}>
+                              <FieldLabel htmlFor="form-rhf-range">
+                                Range
+                              </FieldLabel>
+                              <Input
+                                {...field}
+                                id="form-rhf-range"
+                                type="number"
+                                aria-invalid={fieldState.invalid}
+                                placeholder="1kms"
+                                value={field.value === 0 ? "" : field.value}
+                                onChange={(e) => field.onChange(e.target.value === "" ? 0 : Number(e.target.value))}
                               />
                               {fieldState.invalid && (
                                 <FieldError errors={[fieldState.error]} />

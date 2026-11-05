@@ -8,7 +8,11 @@
     "build": "prisma generate && next build",
     "postinstall": "prisma generate",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "worker:dev": "tsx watch app/workers/index.ts",
+    "dashboard:dev": "tsx watch app/workers/dashboard.ts",
+    "docker:up": "docker compose up -d",
+    "docker:down": "docker compose down"
   },
   "dependencies": {
     "@base-ui/react": "^1.9.0",
@@ -59,6 +63,7 @@
   "devDependencies": {
     "@tailwindcss/turbopack": "^4",
     "@tanstack/react-query-devtools": "^5.104.3",
+    "@types/express": "^5.0.6",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^20",
     "@types/pg": "^8.23.1",

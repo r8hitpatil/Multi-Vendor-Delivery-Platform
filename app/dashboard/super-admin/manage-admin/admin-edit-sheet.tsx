@@ -48,6 +48,9 @@ const formSchema = z.object({
     .email("Invalid email address"),
   status: z
     .nativeEnum(Status, { message: "Please select a valid status" }),
+  range : z
+      .number()
+      .min(1,"Enter min kms of range"),
   ban: z
     .boolean(),
 })
@@ -84,6 +87,7 @@ export function AdminEditSheet({
       email: "",
       status: Status.PENDING,
       ban: false,
+      range : 0
     },
   })
 
@@ -96,6 +100,7 @@ export function AdminEditSheet({
         email: admin.email ?? "",
         status: admin.status ?? Status.PENDING,
         ban: admin.ban ?? false,
+        range: admin.range ?? 0
       })
       setError("")
       setSuccessMsg("")
@@ -113,6 +118,7 @@ export function AdminEditSheet({
         email: data.email,
         ban: data.ban,
         status: data.status,
+        range: data.range
       })
 
       if (res.success) {
@@ -194,7 +200,29 @@ export function AdminEditSheet({
                   </Field>
                 )}
               />
-
+              <Controller
+                name="range"
+                control={form.control}
+                render={({ field, fieldState }) => (
+                  <Field data-invalid={fieldState.invalid}>
+                    <FieldLabel htmlFor="form-rhf-range">
+                      Range
+                    </FieldLabel>
+                    <Input
+                      {...field}
+                      id="form-rhf-range"
+                      type="number"
+                      aria-invalid={fieldState.invalid}
+                      placeholder="1kms"
+                      value={field.value === 0 ? 0 : field.value}
+                      onChange={(e) => field.onChange(e.target.value === "" ? 0 : Number(e.target.value))}
+                    />
+                    {fieldState.invalid && (
+                      <FieldError errors={[fieldState.error]} />
+                    )}
+                  </Field>
+                )}
+              />
               {/* Email */}
               <Controller
                 name="email"

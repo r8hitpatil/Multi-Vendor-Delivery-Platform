@@ -13,6 +13,7 @@ export type Admin = {
   phone: string
   ban: boolean
   status: Status
+  range : number | null
   companyId?: string | null
   createdAt?: string | Date
 }

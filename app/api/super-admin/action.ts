@@ -61,7 +61,7 @@ export async function getCompany(){
 export async function createAdmin(body: unknown) {
     const res = createAdminSchema.safeParse(body);
     if(!res.success) return zodError(res.error);
-    const { name, phone, email, password , companyId , ban , status } = res.data;
+    const { name, phone, email, password , companyId , ban , status , range } = res.data;
 
     try {
         await requireSuperAdmin();
@@ -85,6 +85,7 @@ export async function createAdmin(body: unknown) {
                 email,
                 password: hashPass,
                 ban,
+                range,
                 companyId,
                 Role : Role.ADMIN,
                 status
@@ -103,7 +104,7 @@ export async function createAdmin(body: unknown) {
 export async function manageAdmin(body: unknown) {
     const res = manageAdminSchema.safeParse(body);
     if(!res.success) return zodError(res.error);
-    const { name, phone, email, ban , status } = res.data;
+    const { name, phone, email, ban , status , range } = res.data;
 
     try {
         await requireSuperAdmin();
@@ -123,6 +124,7 @@ export async function manageAdmin(body: unknown) {
             data: {
                 name,
                 email,
+                range,
                 phone,
                 ban,
                 status

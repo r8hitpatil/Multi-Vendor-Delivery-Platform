@@ -8,6 +8,7 @@ export const createAdminSchema = z.object({
     email : z.string().trim().email("Invalid email address"),
     companyId : z.string().min(1,"Company id is required"),
     status : z.nativeEnum(Status,{ message : "Select valid status" }),
+    range : z.coerce.number().min(1,"Enter min kms of range"),
     ban : z.boolean().default(false),
 })
 
@@ -25,5 +26,6 @@ export const manageAdminSchema = z.object({
     phone : z.string().trim().min(10,"Must be at least 10 character long"),
     email : z.string().trim().email("Invalid email address"),
     ban : z.boolean().default(false),
+    range : z.coerce.number().min(1,"Enter min kms of range"),
     status : z.nativeEnum(Status,{ message : "Invalid status" })
 })

@@ -6,8 +6,6 @@ import { requireCustomer } from "../auth/action";
 import { createUserAddress } from "./schema";
 import { zodError } from "@/app/libs/zod-error";
 
-
-
 export async function homePageProducts() {
   try {
     const res = await prisma.availableProduct.findMany({

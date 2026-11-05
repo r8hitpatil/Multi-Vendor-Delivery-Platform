@@ -23,11 +23,24 @@ enum Status {
 }
 
 enum OrderStatus {
-  RECIEVED
-  IN_TRANSIT
-  REACHED
+  PLACED
+  VENDOR_ACCEPTED
+  VENDOR_REJECTED
+  PREPARING
+  READY
+  PICKED_UP
   OUT_OF_DELIVERY
-  COMPLETED
+  DELIVERED
+  CANCELLED
+}
+
+enum DispatchStatus {
+  NOT_STARTED
+  SEARCHING
+  REQUEST_SENT
+  ASSIGNED
+  NEEDS_ADMIN
+  MANUALLY_ASSIGNED
 }
 
 model User {
@@ -51,6 +64,8 @@ model User {
   adminDriver User? @relation("AdminDrivers", fields: [adminDriverId],references: [id])
   drivers User[] @relation("AdminDrivers")
 
+  online Boolean @default(false)
+  range Int?
   orders Order[]
   driverOrders OrderItem[] @relation("DriverOrderItems")
   companyId String?
@@ -113,7 +128,8 @@ model Order {
 
 model OrderItem {
   id String @id @default(uuid())
-  orderStatus OrderStatus @default(IN_TRANSIT)
+  orderStatus OrderStatus @default(PLACED)
+  dispatchStatus DispatchStatus @default(NOT_STARTED)
   quantity Int
   orderId String
   order Order @relation(fields: [orderId],references: [id])

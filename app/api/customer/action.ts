@@ -5,6 +5,7 @@ import { prisma } from "@/app/libs/prisma";
 import { requireCustomer } from "../auth/action";
 import { createUserAddress } from "./schema";
 import { zodError } from "@/app/libs/zod-error";
+import { vendorAcceptOrderAction } from "@/app/actions/orders";
 
 export async function homePageProducts() {
   try {
@@ -307,6 +308,11 @@ export async function orderProducts(){
 
       return newOrder;
     })
+    
+    for( const item of res.orderItems ){
+      await vendorAcceptOrderAction(item.id);
+    }
+    
     return {
       success : true,
       message : "Create order successfully",

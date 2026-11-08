@@ -6,9 +6,8 @@ import { handleActionError } from "@/app/libs/errors";
 import { createStoreSchema, productBodySchema, updateProductBodySchema } from "./schema";
 import { zodError } from "@/app/libs/zod-error";
 import { OrderStatus } from "@/app/generated/prisma/enums";
-import { collection, doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore";
+import { collection, doc, getDoc, getDocs, serverTimestamp, setDoc } from "firebase/firestore";
 import { db } from "@/app/libs/firebase";
-import { success } from "zod";
 
 export async function createStore(body : unknown){
     const res = createStoreSchema.safeParse(body);
@@ -431,3 +430,30 @@ export async function notifyDriverReq(id:string){
         return handleActionError(error);
     }
 }
+
+export async function getDriverReqStatus(){
+    try {
+        const usr = await requireVendor();
+        if(usr.ban){
+            throw new Error("Vendor is banned");
+        }
+        if(usr.status!=="ACCEPTED"){
+            return {
+                success : false as const,
+                message : usr.status === "PENDING" ? "Your vendor account is pending admin approval" : 
+                "Your vendor account is rejected"
+            }
+        }
+        const snapshot = await getDocs(collection(db, "driver_req"));
+        const pendingIds = snapshot.docs.map((doc) => doc.id);
+        return {
+            success : true as const,
+            message : "Driver requests docs",
+            data : pendingIds
+        }
+    } catch (error) {
+        return handleActionError(error);
+    }
+}
+
+// function available drivers

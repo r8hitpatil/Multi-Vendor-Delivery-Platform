@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { changeOrderStatus, getOrderedProducts, notifyDriverReq } from "@/app/api/vendor/action";
+import { changeOrderStatus, getDriverReqStatus, getOrderedProducts, notifyDriverReq } from "@/app/api/vendor/action";
 import PageLoading from "../loading";
 import { OrderStatus } from "@/app/generated/prisma/enums";
 
@@ -23,9 +23,13 @@ export default function ManageOrdersPage() {
       try {
         setIsLoading(true);
         const res = await getOrderedProducts();
+        const pendingReqs = await getDriverReqStatus();
         if (res.success && res.data) {
           setOrderItems(res.data);
-        } else {
+        } if(pendingReqs.success && pendingReqs.data) {
+          setRequestingIds(pendingReqs.data);
+        }
+        else {
           setError(res.message || "Failed to load orders");
         }
       } catch (err: any) {
@@ -38,11 +42,15 @@ export default function ManageOrdersPage() {
   }, []);
 
   const statusOptions = [
-    { value: OrderStatus.COMPLETED, label: OrderStatus.COMPLETED },
-    { value: OrderStatus.IN_TRANSIT, label: OrderStatus.IN_TRANSIT },
+    { value: OrderStatus.PLACED, label: OrderStatus.PLACED },
+    { value: OrderStatus.CANCELLED, label: OrderStatus.CANCELLED },
     { value: OrderStatus.OUT_OF_DELIVERY, label: OrderStatus.OUT_OF_DELIVERY },
-    { value: OrderStatus.REACHED, label: OrderStatus.REACHED },
-    { value: OrderStatus.RECIEVED, label: OrderStatus.RECIEVED },
+    { value: OrderStatus.PICKED_UP, label: OrderStatus.PICKED_UP },
+    { value: OrderStatus.PREPARING, label: OrderStatus.PREPARING },
+    { value: OrderStatus.READY, label: OrderStatus.READY },
+    { value: OrderStatus.VENDOR_ACCEPTED, label: OrderStatus.VENDOR_ACCEPTED },
+    { value: OrderStatus.VENDOR_REJECTED, label: OrderStatus.VENDOR_REJECTED },
+    { value: OrderStatus.DELIVERED, label: OrderStatus.DELIVERED },
   ];
 
   async function orderStatusChange(id: string, status: OrderStatus) {

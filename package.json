@@ -12,7 +12,8 @@
     "worker:dev": "tsx watch app/workers/index.ts",
     "dashboard:dev": "tsx watch app/workers/dashboard.ts",
     "docker:up": "docker compose up -d",
-    "docker:down": "docker compose down"
+    "docker:down": "docker compose down",
+    "socket:dev":"tsx watch app/workers/socket.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.9.0",

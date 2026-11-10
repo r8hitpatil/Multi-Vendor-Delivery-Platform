@@ -1,6 +1,7 @@
+import 'dotenv/config';
 import { Job, Worker } from "bullmq";
 import { AdminSearchTimeoutJobData, DELIVERY_JOBS, DELIVERY_QUEUES, DriverRoundTimeoutJobData, NotificationJobData, VendorTimeoutJobData } from "../libs/queue/queue.constants";
-import { DispatchStatus, OrderStatus } from "../generated/prisma/enums";
+import { DispatchStatus, OrderStatus, Role, Status } from "../generated/prisma/enums";
 import { prisma } from "../libs/prisma";
 import { queuePushNotification, scheduleDriverRoundTimeout } from "../libs/queue/delivery.queue";
 import { redisConnection } from "../libs/queue/redis";
@@ -62,21 +63,83 @@ export const dispatchWorker = new Worker(
                 const order = await prisma.orderItem.findUnique({
                     where : {
                         id : orderId,
+                    },
+                    include : {
+                        product : {
+                            select : {
+                                storeId : true,
+                            }
+                        }
                     }
                 })
-
-                if(!order || order.dispatchStatus === "ASSIGNED") {
+                if(!order){
+                    throw new Error('No relevant order found');
+                }
+                if(order.dispatchStatus === DispatchStatus.ASSIGNED) {
                     console.log(`[Worker] Order ${orderId} is already assigned. Skipping Round ${roundNumber}.`);
                     return;
                 }
+                const storeAddress = await prisma.store.findUnique({
+                    where : {
+                        id : order.product.storeId
+                    },
+                    include : {
+                        address : {
+                            select : {
+                                lat : true,
+                                long : true
+                            }
+                        },
+                        vendor : {
+                            select : {
+                                range : true,
+                                admin : {
+                                    select : {
+                                        drivers : {
+                                            where : {
+                                                Role : Role.DRIVER,
+                                                status : Status.ACCEPTED,
+                                                ban : false,
+                                                // online : true,
+                                            },
+                                            include : {
+                                                address : {
+                                                    select : {
+                                                        lat : true,
+                                                        long : true,
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                })
+                if(!storeAddress || !storeAddress.address){
+                    throw new Error('Store address not found');
+                }
 
-                // If round 1 is done yet not assigned , we go in round 2
-                if(roundNumber === 1) {
-                    const nextRadius = 5; // expanding to 5k
-                    console.log(`[Worker] Round 1 expired for Order ${orderId}. Starting Round 2 with ${nextRadius}km radius.`);
+                if(roundNumber >= 3) {
+                    await prisma.orderItem.update({
+                        where : {
+                            id : orderId
+                        },
+                        data : {
+                            dispatchStatus : DispatchStatus.NEEDS_ADMIN
+                        }
+                    })
+                    break;
+                }
+                if(order.dispatchStatus === DispatchStatus.SEARCHING) {
+                    const addRange= Math.round(Number(storeAddress.vendor.range)/3);
+                    const nextKms = radiusKm + addRange;
+                    const nextRound = roundNumber + 1; // making it round iterate
+                    console.log(`[Worker] Round ${roundNumber} expired for Order ${orderId}. Starting Round ${nextRound} with ${nextKms}km radius.`);
 
                     // Schedule round 2 for 60 seconds
-                    await scheduleDriverRoundTimeout(orderId,2,nextRadius,60);
+                    await scheduleDriverRoundTimeout(orderId,nextRound,nextKms,10);
                 }
                 break;
             }
@@ -111,6 +174,7 @@ export const dispatchWorker = new Worker(
     }, {
         connection : redisConnection,
         concurrency : 5,
+        lockDuration : 300000
     }
 );
 
@@ -127,3 +191,11 @@ export const notificationWorker = new Worker(
         concurrency: 10,
     }
 )
+
+dispatchWorker.on('completed', (job) => {
+    console.log(`[Worker] Job completed: ${job.name} (ID: ${job.id})`);
+});
+
+dispatchWorker.on('failed', (job, err) => {
+    console.error(`[Worker] Job FAILED: ${job?.name} (ID: ${job?.id}) - Error:`, err.message);
+});

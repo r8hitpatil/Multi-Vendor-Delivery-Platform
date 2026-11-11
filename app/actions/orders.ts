@@ -5,6 +5,20 @@ import { DispatchStatus, OrderStatus, Role, Status } from "../generated/prisma/e
 import { prisma } from "../libs/prisma";
 import { cancelVendorTimeout, scheduleDriverRoundTimeout } from "../libs/queue/delivery.queue";
 
+type LiveDriver = { driverId : string,lat:number,long:number };
+
+async function getLiveDrivers(adminId:string): Promise<LiveDriver[]> {
+    try {
+        const res = await fetch(`http://localhost:3002/live-drivers/${adminId}`, {
+            cache : "no-store",
+        });
+        if(!res.ok) return [];
+        return res.json();
+    } catch {
+        return [];
+    }
+}
+
 export async function vendorAcceptOrderAction(orderId:string) {
     try {
         await cancelVendorTimeout(orderId);
@@ -29,22 +43,18 @@ export async function vendorAcceptOrderAction(orderId:string) {
                                 vendor : {
                                     select : {
                                         range : true,
+                                        adminId : true,
                                         admin : {
                                             select : {
+                                                id : true,
                                                 drivers : {
                                                     where : {
                                                         Role : Role.DRIVER,
                                                         status : Status.ACCEPTED,
-                                                        ban : false,
-                                                        // online : true,
+                                                        ban : false
                                                     },
-                                                    include : {
-                                                        address : {
-                                                            select : {
-                                                                lat : true,
-                                                                long : true,
-                                                            }
-                                                        }
+                                                    select : {
+                                                        id : true,
                                                     }
                                                 }
                                             }
@@ -58,23 +68,27 @@ export async function vendorAcceptOrderAction(orderId:string) {
             }
         })
 
-        const drivers = updated.product.storeProducts.vendor.admin?.drivers || []
+        const drivers = updated.product.storeProducts.vendor.admin?.drivers || [];
+        const validDriverIds = new Set(drivers.map((d) => d.id));
         const address = updated.product.storeProducts.address;
+        const adminId = updated.product.storeProducts.vendor.adminId;
+        const liveDrivers = adminId ? await getLiveDrivers(adminId) : [];
         const range = updated.product.storeProducts.vendor?.range;
         let shouldWeSend = false;
 
-        if(address?.lat && address.long && drivers.length > 0 && range){
+        if(address?.lat && address?.long && liveDrivers.length > 0 && range){
             const storeLat = Number(address.lat);
             const storeLong = Number(address.long);
 
-            for(const driver of drivers){
-                if(driver.address?.lat && driver.address?.long){
-                    const driverLat = Number(driver.address.lat);
-                    const driverLong = Number(driver.address.long);
-                    const a = getDistanceInKm(storeLat,storeLong,driverLat,driverLong);
-                    if(a <= range){
+            for(const driver of liveDrivers){
+
+                if(!validDriverIds.has(driver.driverId)) continue;
+
+                if(driver.lat!=null && driver.long!=null){
+                    const distanceInKm = getDistanceInKm(storeLat,storeLong,driver.lat,driver.long);
+                    if(distanceInKm <= range){
                         shouldWeSend = true;
-                        console.log('New Distance in kms : ',a);
+                        console.log('New Distance in kms : ',distanceInKm);
                     }
                 }
             }
@@ -89,8 +103,8 @@ export async function vendorAcceptOrderAction(orderId:string) {
             success : true,
             message : "Accepted the order"
         }
-    } catch (error:any) {
+    } catch (error:unknown) {
         console.error('[vendorAcceptOrderAction] Error:', error);
-        return { success: false, message: error.message || "Failed to accept order" };
+        return { success: false, message: error instanceof Error ? error.message : "Failed to accept order" };
     }
 }

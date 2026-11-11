@@ -69,7 +69,7 @@ export async function loginAction(body: unknown) {
 export async function verifyMe() {
   const cookie = await cookies();
 
-  cookie.get('access_token');
+  return cookie.get('access_token');
 }
 
 export async function requireAdmin(){

@@ -64,7 +64,6 @@ model User {
   adminDriver User? @relation("AdminDrivers", fields: [adminDriverId],references: [id])
   drivers User[] @relation("AdminDrivers")
 
-  online Boolean @default(false)
   range Int?
   orders Order[]
   driverOrders OrderItem[] @relation("DriverOrderItems")

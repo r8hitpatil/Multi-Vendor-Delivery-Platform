@@ -100,15 +100,6 @@ export const dispatchWorker = new Worker(
                                                 Role : Role.DRIVER,
                                                 status : Status.ACCEPTED,
                                                 ban : false,
-                                                // online : true,
-                                            },
-                                            include : {
-                                                address : {
-                                                    select : {
-                                                        lat : true,
-                                                        long : true,
-                                                    }
-                                                }
                                             }
                                         }
                                     }

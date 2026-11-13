@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { changeOrderStatus, getDriverReqStatus, getOrderedProducts, notifyDriverReq } from "@/app/api/vendor/action";
+import { changeOrderStatus, getOrderedProducts } from "@/app/api/vendor/action";
 import PageLoading from "../loading";
 import { OrderStatus } from "@/app/generated/prisma/enums";
 
@@ -15,19 +15,14 @@ export default function ManageOrdersPage() {
   const [orderItems, setOrderItems] = useState<VendorOrderItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [requestingId,setRequestingId] = useState<string | null>(null);
-  const [requestingIds,setRequestingIds] = useState<string[]>([]);
 
   useEffect(() => {
     async function loadOrders() {
       try {
         setIsLoading(true);
         const res = await getOrderedProducts();
-        const pendingReqs = await getDriverReqStatus();
         if (res.success && res.data) {
           setOrderItems(res.data);
-        } if(pendingReqs.success && pendingReqs.data) {
-          setRequestingIds(pendingReqs.data);
         }
         else {
           setError(res.message || "Failed to load orders");
@@ -98,24 +93,6 @@ export default function ManageOrdersPage() {
         </div>
       </div>
     );
-  }
-
-  async function handleRequestDriver(id:string){
-    try {
-      setRequestingId(id);
-      const res = await notifyDriverReq(id);
-      if(res.success){
-        setRequestingIds((prev) => [...prev,id]);
-        alert(res.message);
-      }
-      else {
-        alert(res.message || "Failed to send driver request");
-      }
-    } catch (error:any) {
-      alert(error.message || "Error requesting driver")
-    } finally {
-      setRequestingId(null);
-    }
   }
 
   return (
@@ -206,29 +183,7 @@ export default function ManageOrdersPage() {
               </select>
             </div>
             {/* Driver Request / Assignment Row */}
-            <div className="border-t border-border pt-3">
-              {item.driver ? (
-                <div className="flex items-center justify-between text-xs font-mono p-2 bg-muted/40 border border-border rounded-none">
-                  <span className="text-[11px] uppercase font-bold text-muted-foreground">Driver:</span>
-                  <span className="font-bold text-foreground truncate">{item.driver.name} ({item.driver.phone})</span>
-                </div>
-              ) :  requestingIds.includes(item.id) ? (
-                 <button
-                      disabled
-                      className="w-full border border-dashed border-border py-1.5 px-3 text-[11px] font-mono text-muted-foreground uppercase opacity-70 cursor-not-allowed"
-                    >
-                      Driver Requested (Pending)
-                  </button>
-                ) :   (
-                <button
-                  onClick={() => handleRequestDriver(item.id)}
-                  disabled={requestingId === item.id}
-                  className="w-full rounded-none border border-foreground bg-foreground text-background hover:bg-foreground/90 disabled:opacity-50 py-1.5 px-3 text-[11px] font-mono uppercase font-bold tracking-wider transition-colors cursor-pointer"
-                >
-                  {requestingId === item.id ? "Sending Request..." : "Request Driver"}
-                </button>
-              )}
-            </div>
+            
           </div>
         ))}
       </div>

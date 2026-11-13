@@ -18,6 +18,15 @@ export const dispatchQueue = new Queue(DELIVERY_QUEUES.DISPATCH, {
 
 export const notificationQueue = new Queue(DELIVERY_QUEUES.NOTIFICATIONS, {
     connection : redisConnection,
+    defaultJobOptions : {
+        attempts : 3,
+        backoff : {
+            type : 'exponential',
+            delay : 1000,
+        },
+        removeOnComplete : true,
+        removeOnFail : false,
+    }
 })
 
 // Producer helper function

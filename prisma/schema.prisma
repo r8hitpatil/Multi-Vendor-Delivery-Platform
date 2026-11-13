@@ -73,6 +73,7 @@ model User {
   store Store?
   address Address?
   cart Cart?
+  fcmToken String?
 }
 
 model Company {

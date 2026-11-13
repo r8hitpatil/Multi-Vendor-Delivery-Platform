@@ -6,15 +6,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useEffect, useState } from "react";
 import PageLoading from "./loading";
-import { collection, onSnapshot, query, where } from "firebase/firestore";
-import { db } from "@/app/libs/firebase";
-import { getAdminId } from "@/app/api/auth/action";
 
 export default function AdminPage() {
     const [error, setError] = useState("");
     const [isLoading, setIsLoading] = useState(true);
     const [pending, setPending] = useState<User[]>([]);
-    const [requests,setRequests] = useState<any[]>([]);
 
     async function onAcceptVendor(id: string) {
         const res = await approveVendor(id);
@@ -50,28 +46,8 @@ export default function AdminPage() {
             }
         };
         fetchPending();
-        let unsubscribe:(() => void) | undefined;
-        async function initListen(){
-            const adminId = await getAdminId();
-            if(!adminId) return;
-            const q = query(
-                collection(db,"driver_req"),
-                where("adminId","==",adminId),
-                where("status","==","PENDING")
-            )
-
-            unsubscribe = onSnapshot(q,(snapshot) => {
-                const items = snapshot.docs.map((doc) => ({
-                    id : doc.id,
-                    ...doc.data(),
-                }));
-                setRequests(items);
-            })
-        }
-        initListen();
 
         return () => {
-            if(unsubscribe) unsubscribe();
         }
     }, []);
 
@@ -134,22 +110,6 @@ export default function AdminPage() {
                     </CardContent>
                 </Card>
             )}
-            {
-                <div className="border p-4 rounded-none bg-card space-y-2">
-                  <div className="flex justify-between items-center">
-                    <h2 className="font-bold text-sm uppercase">Driver Requests</h2>
-                    <span className="bg-red-300 text-destructive-foreground text-xs font-mono font-bold px-2 py-0.5">
-                      {requests.length} Pending
-                    </span>
-                  </div>
-                  {requests.map((req) => (
-                    <div key={req.id} className="p-2 border text-xs font-mono space-y-1">
-                      <p className="font-bold">{req.productName} (Order #{req.orderId.slice(0, 8)})</p>
-                      <p className="text-muted-foreground">Deliver to: {req.deliveryAddress}</p>
-                    </div>
-                  ))}
-                </div>
-            }
         </div>
     );
 }

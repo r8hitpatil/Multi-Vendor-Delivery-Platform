@@ -5,6 +5,7 @@ import { DispatchStatus, OrderStatus, Role, Status } from "../generated/prisma/e
 import { prisma } from "../libs/prisma";
 import { queuePushNotification, scheduleDriverRoundTimeout } from "../libs/queue/delivery.queue";
 import { redisConnection } from "../libs/queue/redis";
+import { getAdminMessaging } from '../libs/firebase-admin';
 
 // Dispatch worker : Handles order timeouts , driver rounds , admin alerts
 
@@ -172,11 +173,64 @@ export const dispatchWorker = new Worker(
 export const notificationWorker = new Worker(
     DELIVERY_QUEUES.NOTIFICATIONS,
     async (job:Job<NotificationJobData>) => {
-        const { userId,title,body } = job.data;
+        const { userId,title,body,data } = job.data;
         console.log(`[Notification worker] Sending push to user ${userId} : ${title}`);
-    }
 
-    //CALL FIREBASE FCM
+        const user = await prisma.user.findUnique({
+            where : {
+                id : userId
+            },
+            select : {
+                fcmToken : true,
+            },
+        });
+
+        if(!user || !user.fcmToken) {
+            console.warn(`[Notification worker] user ${userId} has no active FCM token. Skipping push`);
+            return;
+        }
+        
+        try {
+            const response = await getAdminMessaging().send({
+                token: user.fcmToken,
+                notification : {
+                    title,
+                    body,
+                },
+                data : data || {},
+                webpush : {
+                    headers : {
+                        Urgency : "high",
+                    },
+                    notification : {
+                        title,
+                        body,
+                        icon : '/file.svg',
+                        requireInteraction : true,
+                    },
+                    fcmOptions : {
+                        link : "/dashboard/driver",
+                    },
+                },
+            });
+            console.log(`[Notification token] Push delivery : ${response}`);
+        } catch (error:any) {
+            console.error(`[Notification worker] failed to push notification ${userId} : `,error.message);
+
+            if (
+              error.code === "messaging/registration-token-not-registered" ||
+              error.code === "messaging/invalid-argument"
+            ) {
+              console.warn(`[Notification Worker] Token expired or invalid. Removing fcmToken for user ${userId}`);
+              await prisma.user.update({
+                where: { id: userId },
+                data: { fcmToken: null },
+              });
+            } else {
+              throw error;
+            }
+        }
+    }
     ,{
         connection : redisConnection,
         concurrency: 10,

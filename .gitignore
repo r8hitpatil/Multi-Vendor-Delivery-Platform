@@ -52,3 +52,11 @@ dist/
 .windsurf/
 .cursor/
 skills-lock.json
+
+# local engineering notes
+CODE_AUDIT_AND_FIXES.md
+FCM setup guide.md
+NEXTJS_FCM_SETUP_GUIDE.md
+bull-on-next.md
+hourly-plan.md
+

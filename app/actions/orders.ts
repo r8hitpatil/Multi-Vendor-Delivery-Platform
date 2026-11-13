@@ -3,7 +3,7 @@
 import { getDistanceInKm } from "@/distance";
 import { DispatchStatus, OrderStatus, Role, Status } from "../generated/prisma/enums";
 import { prisma } from "../libs/prisma";
-import { cancelVendorTimeout, scheduleDriverRoundTimeout } from "../libs/queue/delivery.queue";
+import { cancelVendorTimeout, queuePushNotification, scheduleDriverRoundTimeout } from "../libs/queue/delivery.queue";
 
 type LiveDriver = { driverId : string,lat:number,long:number };
 
@@ -42,11 +42,11 @@ export async function vendorAcceptOrderAction(orderId:string) {
                                 },
                                 vendor : {
                                     select : {
-                                        range : true,
                                         adminId : true,
                                         admin : {
                                             select : {
                                                 id : true,
+                                                range : true,
                                                 drivers : {
                                                     where : {
                                                         Role : Role.DRIVER,
@@ -73,7 +73,7 @@ export async function vendorAcceptOrderAction(orderId:string) {
         const address = updated.product.storeProducts.address;
         const adminId = updated.product.storeProducts.vendor.adminId;
         const liveDrivers = adminId ? await getLiveDrivers(adminId) : [];
-        const range = updated.product.storeProducts.vendor?.range;
+        const range = updated.product.storeProducts.vendor.admin?.range;
         let shouldWeSend = false;
 
         if(address?.lat && address?.long && liveDrivers.length > 0 && range){
@@ -89,6 +89,16 @@ export async function vendorAcceptOrderAction(orderId:string) {
                     if(distanceInKm <= range){
                         shouldWeSend = true;
                         console.log('New Distance in kms : ',distanceInKm);
+                        await queuePushNotification({
+                          userId: driver.driverId,
+                          title: "New Delivery Request!",
+                          body: `Order #${orderId.slice(0, 8)} at (${distanceInKm.toFixed(1)} km away). Tap to accept!`,
+                          data: {
+                            orderId: orderId,
+                            round: "1",
+                            type: "NEW_DELIVERY_OFFER",
+                          },
+                        });
                     }
                 }
             }

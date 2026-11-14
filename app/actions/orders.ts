@@ -3,7 +3,7 @@
 import { getDistanceInKm } from "@/distance";
 import { DispatchStatus, OrderStatus, Role, Status } from "../generated/prisma/enums";
 import { prisma } from "../libs/prisma";
-import { cancelVendorTimeout, queuePushNotification, scheduleDriverRoundTimeout } from "../libs/queue/delivery.queue";
+import { cancelVendorTimeout, queuePushNotification, scheduleAdminSearchTimeout, scheduleDriverRoundTimeout } from "../libs/queue/delivery.queue";
 
 type LiveDriver = { driverId : string,lat:number,long:number };
 
@@ -51,7 +51,15 @@ export async function vendorAcceptOrderAction(orderId:string) {
                                                     where : {
                                                         Role : Role.DRIVER,
                                                         status : Status.ACCEPTED,
-                                                        ban : false
+                                                        ban : false,
+                                                        driverOrders : {
+                                                            none : {
+                                                                dispatchStatus : DispatchStatus.ASSIGNED,
+                                                                orderStatus : {
+                                                                    notIn : [OrderStatus.DELIVERED,OrderStatus.CANCELLED],
+                                                                }
+                                                            }
+                                                        }
                                                     },
                                                     select : {
                                                         id : true,
@@ -74,32 +82,38 @@ export async function vendorAcceptOrderAction(orderId:string) {
         const adminId = updated.product.storeProducts.vendor.adminId;
         const liveDrivers = adminId ? await getLiveDrivers(adminId) : [];
         const range = updated.product.storeProducts.vendor.admin?.range;
+        const rangeBy3 = range ? Number(range/3) : 5;
         let shouldWeSend = false;
 
         if(address?.lat && address?.long && liveDrivers.length > 0 && range){
             const storeLat = Number(address.lat);
             const storeLong = Number(address.long);
 
-            for(const driver of liveDrivers){
+            const nearbyDrivers = liveDrivers.filter((d) => validDriverIds.has(d.driverId) && d.lat!= null && d.long != null)
+            .map((d) => {
+                const distanceInKm = getDistanceInKm(storeLat,storeLong,d.lat,d.long);
+                return {
+                    driverId : d.driverId,
+                    distanceInKm,
+                };
+            })
+            .filter((d) => d.distanceInKm <= range)
+            .sort((a,b) => a.distanceInKm - b.distanceInKm)
 
-                if(!validDriverIds.has(driver.driverId)) continue;
+            if(nearbyDrivers.length > 0) {
+                shouldWeSend = true;
 
-                if(driver.lat!=null && driver.long!=null){
-                    const distanceInKm = getDistanceInKm(storeLat,storeLong,driver.lat,driver.long);
-                    if(distanceInKm <= range){
-                        shouldWeSend = true;
-                        console.log('New Distance in kms : ',distanceInKm);
-                        await queuePushNotification({
-                          userId: driver.driverId,
-                          title: "New Delivery Request!",
-                          body: `Order #${orderId.slice(0, 8)} at (${distanceInKm.toFixed(1)} km away). Tap to accept!`,
-                          data: {
-                            orderId: orderId,
-                            round: "1",
-                            type: "NEW_DELIVERY_OFFER",
-                          },
-                        });
-                    }
+                for(const driver of nearbyDrivers){
+                    await queuePushNotification({
+                      userId: driver.driverId,
+                      title: "New Delivery Request!",
+                      body: `Order #${orderId.slice(0, 8)} at (${driver.distanceInKm.toFixed(1)} km away). Tap to accept!`,
+                      data: {
+                        orderId: orderId,
+                        round: "1",
+                        type: "NEW_DELIVERY_OFFER",
+                      },
+                    });
                 }
             }
         }
@@ -107,7 +121,8 @@ export async function vendorAcceptOrderAction(orderId:string) {
             console.log(`[Order ${orderId}] No online drivers found immediately. Background worker will search in rounds.`);
         }
         if(shouldWeSend){
-            await scheduleDriverRoundTimeout(orderId,1,5,10);
+            await scheduleDriverRoundTimeout(orderId,1,rangeBy3,10);
+            await scheduleAdminSearchTimeout(orderId,180);
         }
         return {
             success : true,

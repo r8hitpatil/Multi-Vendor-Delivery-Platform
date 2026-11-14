@@ -74,7 +74,7 @@ export async function verifyMe() {
 
 export async function requireAdmin(){
   const session = await getSession();
-  if(session?.role !== "ADMIN"){
+  if(session?.role !== Role.ADMIN){
     throw new Error ("Unauthorized : Only authorized roles are allowed")
   }
   const admin = await prisma.user.findUnique({
@@ -99,9 +99,37 @@ export async function requireAdmin(){
   };
 }
 
+export async function requireDriver(){
+  const session = await getSession();
+  if(session?.role !== Role.DRIVER){
+    throw new Error ("Unauthorized : Only authorized roles are allowed")
+  }
+  const driver = await prisma.user.findUnique({
+    where : {
+      email : session.email,
+    },
+    select : {
+      id : true,
+      companyId : true,
+      status : true,
+      adminDriverId : true,
+      ban : true,
+    }
+  })
+  if(!driver || !driver.companyId || !driver.adminDriverId){
+    throw new Error("Vendor is not assigned to any admin");
+  }
+  return {
+    adminId : driver.adminDriverId,
+    driverId : driver.id,
+    status : driver.status,
+    ban : driver.ban
+  };
+}
+
 export async function requireVendor(){
   const session = await getSession();
-  if(session?.role !== "VENDOR"){
+  if(session?.role !== Role.VENDOR){
     throw new Error ("Unauthorized : Only authorized roles are allowed")
   }
   const vendor = await prisma.user.findUnique({

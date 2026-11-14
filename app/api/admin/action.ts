@@ -7,6 +7,61 @@ import { requireAdmin } from "../auth/action";
 import * as argon from 'argon2';
 import { zodError } from "@/app/libs/zod-error";
 import { createDriverSchema, manageDriverSchema, updateVendorSchema } from "./schema";
+import { DispatchStatus } from "@/app/generated/prisma/enums"; // make sure DispatchStatus is imported
+
+// 1. Returns current admin's ID for socket room joining
+export async function getAdminInfo() {
+    try {
+        const { adminId } = await requireAdmin();
+        return { success: true as const, data: { adminId } };
+    } catch (error) {
+        return handleActionError(error);
+    }
+}
+
+// 2. Returns all orders that failed search rounds or were dropped by a driver
+export async function getOrdersNeedingAdmin() {
+    try {
+        const { adminId } = await requireAdmin();
+        const orders = await prisma.orderItem.findMany({
+            where: {
+                dispatchStatus: DispatchStatus.NEEDS_ADMIN,
+                product: {
+                    storeProducts: {
+                        vendor: {
+                            adminId: adminId,
+                        },
+                    },
+                },
+            },
+            include: {
+                product: {
+                    include: {
+                        storeProducts: {
+                            include: {
+                                address: true,
+                            },
+                        },
+                    },
+                },
+                order: {
+                    include: {
+                        customer: {
+                            include: {
+                                address: true,
+                            },
+                        },
+                    },
+                },
+            },
+            orderBy: { id: "desc" },
+        });
+
+        return { success: true as const, data: orders };
+    } catch (error) {
+        return handleActionError(error);
+    }
+}
 
 export async function getVendors(){
     try {

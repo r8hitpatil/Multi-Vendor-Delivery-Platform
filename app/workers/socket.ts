@@ -39,6 +39,7 @@ io.on("connection",(socket) => {
 
     socket.on("driver-status",(data : {driverId:string,adminId:string,status:boolean}) => {
         console.log(`[Socket] Driver is online : `,data.driverId);
+        socket.join(data.driverId);
         socket.data.driverId = data.driverId;
         socket.data.adminId = data.adminId;
         io.to(data.adminId).emit("status-update",{
@@ -74,6 +75,25 @@ app.get("/live-drivers/:adminId", async(req,res) => {
     }));
 
     res.json(liveDrivers);
+})
+
+app.post("/admin-alert",express.json(),(req,res) => {
+    const { adminId , orderId, message } = req.body;
+
+    if(adminId){
+        io.to(adminId).emit('admin-urgent-order', {orderId,message});
+    }
+    res.json({ success : true });
+})
+
+app.post("/driver-alert",express.json(),(req,res) => {
+    const { driverId , orderId , message } = req.body;
+
+    if(driverId){
+        io.to(driverId).emit('driver-urgent-order',{orderId,message});
+    }
+
+    res.json({ success : true });
 })
 
 const PORT = 3002;

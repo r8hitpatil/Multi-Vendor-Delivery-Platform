@@ -4,6 +4,7 @@ import { driverAcceptOrder, getDriverAdmin, saveDriverFcmToken } from "@/app/api
 import { getFirebaseMessaging } from "@/app/libs/firebase";
 import { socket } from "@/app/libs/socket";
 import { getToken, onMessage } from "firebase/messaging";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 type userDetail = {
@@ -15,9 +16,11 @@ type ActiveAlert = {
   orderId : string,
   title : string,
   body : string,
+  type?: "SEARCH" | "ASSIGNED",
 }
 
 export default function DriverPage() {
+  const router = useRouter();
   const [error,setError] = useState<string | null>(null);
   const [userDetails,setUserDetails] = useState<userDetail | null>(null);
   const [fcmStatus,setFcmStatus] = useState<string>("Initializing push notifications...");
@@ -47,7 +50,7 @@ export default function DriverPage() {
   }
 
   useEffect(() => {
-    if(!activeAlert) return;
+    if(!activeAlert || activeAlert.type === "ASSIGNED") return;
     setTimeLeft(20);
     const t = setInterval(() => {
       setTimeLeft((s) => {
@@ -62,7 +65,7 @@ export default function DriverPage() {
     return () => {
       clearInterval(t)
     };
-  },[activeAlert?.orderId]);
+  },[activeAlert?.orderId, activeAlert?.type]);
 
   useEffect(() => {
     let isMounted = true;
@@ -113,10 +116,11 @@ export default function DriverPage() {
       unsubscribeForeground = onMessage(messaging,(payload) => {
         console.log(`[FCM foreground alert received]`,payload);
         const orderId = payload.data?.orderId;
+        const type = payload.data?.type === "ORDER_ASSIGNED_BY_ADMIN" ? "ASSIGNED" : "SEARCH";
         const title = payload.notification?.title || payload.data?.title || "New Order";
         const body = payload.notification?.body || payload.data?.body || "Tap to review details";
         if(orderId){
-          setActiveAlert({orderId, title , body });
+          setActiveAlert({orderId, title , body, type });
         }
       })
     }
@@ -132,7 +136,7 @@ export default function DriverPage() {
         return setUserDetails(res.data);
       }
       else {
-        setError(res.message);
+        setError(res.message || "Failed to load admin id or driver id");
       }
     }
     getDetails();
@@ -158,6 +162,15 @@ export default function DriverPage() {
     socket.on("connect",onConnect);
     socket.connect();
 
+    socket.on("driver-urgent-order", (data: { orderId: string; message: string }) => {
+      setActiveAlert({
+        orderId: data.orderId,
+        title: "Order Assigned by Admin",
+        body: data.message,
+        type: "ASSIGNED",
+      });
+    });
+
     const watchId = navigator.geolocation.watchPosition(
       (position) => {
         const lat = position.coords.latitude;
@@ -170,8 +183,9 @@ export default function DriverPage() {
     )
     return () => {
       navigator.geolocation.clearWatch(watchId);
-      socket.disconnect();
+      socket.off("driver-urgent-order");
       socket.off("connect",onConnect);
+      socket.disconnect();
     }
   },[userDetails]);
 
@@ -184,24 +198,49 @@ export default function DriverPage() {
           <div className="p-4 border border-foreground bg-accent/20 rounded-none space-y-3 max-w-md">
             <div className="flex justify-between items-center">
               <span className="font-bold text-sm uppercase">{activeAlert.title}</span>
+              {activeAlert.type !== "ASSIGNED" && (
+                <span className="text-xs font-mono font-bold text-red-500">{timeLeft}s</span>
+              )}
             </div>
             <p className="text-xs text-muted-foreground">{activeAlert.body}</p>
 
             <div className="flex gap-2 pt-2">
-              <button
-                onClick={handleAccepting}
-                disabled={isAccepting}
-                className="flex-1 bg-foreground text-background py-1.5 text-xs font-bold uppercase cursor-pointer"
-              >
-                {isAccepting ? "Accepting...." : `Accept Order (${timeLeft}s)`}
-              </button>
-              
-              <button
-                onClick={async () => setActiveAlert(null)}
-                className="flex-1 border border-border py-1.5 text-xs font-bold uppercase cursor-pointer text-muted-foreground hover:text-foreground"
-              >
-                Decline
-              </button>
+              {activeAlert.type === "ASSIGNED" ? (
+                <>
+                  <button
+                    onClick={() => {
+                      setActiveAlert(null);
+                      router.push("/dashboard/driver/orders");
+                    }}
+                    className="flex-1 bg-foreground text-background py-1.5 text-xs font-bold uppercase cursor-pointer hover:opacity-90"
+                  >
+                    View Deliveries
+                  </button>
+                  <button
+                    onClick={() => setActiveAlert(null)}
+                    className="border border-border px-3 py-1.5 text-xs font-bold uppercase cursor-pointer text-muted-foreground hover:text-foreground"
+                  >
+                    Dismiss
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    onClick={handleAccepting}
+                    disabled={isAccepting}
+                    className="flex-1 bg-foreground text-background py-1.5 text-xs font-bold uppercase cursor-pointer"
+                  >
+                    {isAccepting ? "Accepting...." : `Accept Order (${timeLeft}s)`}
+                  </button>
+                  
+                  <button
+                    onClick={async () => setActiveAlert(null)}
+                    className="flex-1 border border-border py-1.5 text-xs font-bold uppercase cursor-pointer text-muted-foreground hover:text-foreground"
+                  >
+                    Decline
+                  </button>
+                </>
+              )}
             </div>
           </div>
         )}        

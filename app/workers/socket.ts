@@ -25,6 +25,11 @@ io.on("connection",(socket) => {
         console.log(`[Socket] Admin joined room : ${adminId}`);
     })
 
+    socket.on("join-driver",(driverId:string) => {
+        socket.join(driverId);
+        console.log(`[Socket] Driver joined room : ${driverId}`);
+    })
+
     socket.on("driver-location",(data: {driverId:string,adminId:string,lat:number,long:number }) => {
         console.log(`[Socket] Live gps received : `,data);
         socket.data.driverId = data.driverId;

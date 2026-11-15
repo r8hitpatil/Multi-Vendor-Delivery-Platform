@@ -54,7 +54,9 @@ export async function vendorAcceptOrderAction(orderId:string) {
                                                         ban : false,
                                                         driverOrders : {
                                                             none : {
-                                                                dispatchStatus : DispatchStatus.ASSIGNED,
+                                                                dispatchStatus : {
+                                                                    in : [DispatchStatus.ASSIGNED, DispatchStatus.MANUALLY_ASSIGNED],
+                                                                },
                                                                 orderStatus : {
                                                                     notIn : [OrderStatus.DELIVERED,OrderStatus.CANCELLED],
                                                                 }

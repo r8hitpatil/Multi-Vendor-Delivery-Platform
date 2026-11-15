@@ -133,12 +133,18 @@ model OrderItem {
   quantity Int
   orderId String
   order Order @relation(fields: [orderId],references: [id])
+  otp Int?
+  vendorOtp Int?
+  customerOtp Int?
 
   productId String
   product Product @relation(fields: [productId],references: [id])
   price Int
   driverId String?
   driver User? @relation("DriverOrderItems", fields: [driverId],references: [id])
+  
+  cooldownUntil DateTime?
+  wrongAttempts Int @default(0)
 }
 
 model Product {

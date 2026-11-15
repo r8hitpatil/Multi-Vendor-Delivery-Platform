@@ -117,7 +117,7 @@ export async function requireDriver(){
     }
   })
   if(!driver || !driver.companyId || !driver.adminDriverId){
-    throw new Error("Vendor is not assigned to any admin");
+    throw new Error("Driver is not assigned to any admin");
   }
   return {
     adminId : driver.adminDriverId,

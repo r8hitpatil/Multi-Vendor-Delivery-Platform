@@ -5,7 +5,7 @@ import { requireVendor } from "../auth/action";
 import { handleActionError } from "@/app/libs/errors";
 import { createStoreSchema, productBodySchema, updateProductBodySchema } from "./schema";
 import { zodError } from "@/app/libs/zod-error";
-import { OrderStatus } from "@/app/generated/prisma/enums";
+import { DispatchStatus, OrderStatus } from "@/app/generated/prisma/enums";
 
 export async function createStore(body : unknown){
     const res = createStoreSchema.safeParse(body);
@@ -300,52 +300,3 @@ export async function getOrderedProducts() {
     return handleActionError(error);
   }
 }
-
-export async function changeOrderStatus(id:string,status:OrderStatus){
-    try {
-        const usr = await requireVendor();
-        if (usr.ban) {
-          throw new Error("Vendor is banned");
-        }
-        if(usr.status!=="ACCEPTED"){
-            return {
-                success : false,
-                message : usr.status === "PENDING" ? "Your vendor account is pending admin approval" : 
-                "Your vendor account is rejected"
-            }
-        }
-        if (!usr.storeId) {
-          return {
-            success: false as const,
-            message: usr.status === "ACCEPTED" ? "Store id not found" : "Request is pending",
-          };
-        }
-
-        if(!Object.values(OrderStatus).includes(status)) {
-            return {
-                success : false as const,
-                message : "Invalid order status value"
-            }
-        }
-
-        const updated = await prisma.orderItem.update({
-            where : {
-                id,
-                product : {
-                    storeId : usr.storeId
-                }
-            },
-            data : {
-                orderStatus : status
-            }
-        })
-        return {
-            success : true as const,
-            message : "Changes the order status",
-            data : updated
-        }
-    } catch (error) {
-        return handleActionError(error);
-    }
-}
-    

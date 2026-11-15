@@ -24,12 +24,12 @@ export async function homePageProducts() {
   }
 }
 
-export async function customerAddress(body:unknown){
+export async function customerAddress(body: unknown) {
   try {
     const res = createUserAddress.safeParse(body);
-    if(!res.success) return zodError(res.error);
+    if (!res.success) return zodError(res.error);
 
-    const { address,lat,long,pin_code } = res.data;
+    const { address, lat, long, pin_code } = res.data;
     const { customerId } = await requireCustomer();
     await prisma.address.upsert({
       where: { userId: customerId },
@@ -37,136 +37,136 @@ export async function customerAddress(body:unknown){
       create: { userId: customerId, address, lat, long, pin_code },
     });
     return {
-      success : true,
-      message : "Created user address"
+      success: true,
+      message: "Created user address"
     }
   } catch (error) {
     return handleActionError(error);
   }
 }
 
-export async function addToCart(prodId:string,quantityToAdd:number=1){
+export async function addToCart(prodId: string, quantityToAdd: number = 1) {
   try {
-    const { customerId : userId } = await requireCustomer();
+    const { customerId: userId } = await requireCustomer();
 
     let cart = await prisma.cart.findUnique({
-      where : { userId }
+      where: { userId }
     });
 
-    if(!cart){
+    if (!cart) {
       cart = await prisma.cart.create({
-        data : { userId },
+        data: { userId },
       })
     }
 
     const res = await prisma.$transaction(async (tx) => {
       const product = await tx.product.findUnique({
-        where : {
-          id : prodId
+        where: {
+          id: prodId
         }
       })
 
       const existingCartItem = await tx.cartItems.findUnique({
-        where : {
-          cartId_productId : {
-            cartId : cart.id,
-            productId : prodId
+        where: {
+          cartId_productId: {
+            cartId: cart.id,
+            productId: prodId
           }
         }
       })
 
       const currentInCart = existingCartItem?.quantity ?? 0;
 
-      if(!product || product.quantity < (currentInCart + quantityToAdd)){
+      if (!product || product.quantity < (currentInCart + quantityToAdd)) {
         throw new Error("Insufficient stock");
       }
-      
+
       const cartItem = await tx.cartItems.upsert({
-        where : {
-          cartId_productId : {
-            cartId : cart.id,
-            productId : prodId
+        where: {
+          cartId_productId: {
+            cartId: cart.id,
+            productId: prodId
           }
         },
-        update : {
-          quantity : { increment : quantityToAdd },
+        update: {
+          quantity: { increment: quantityToAdd },
         },
-        create : {
-          cartId : cart.id,
-          productId : prodId,
-          quantity : quantityToAdd
+        create: {
+          cartId: cart.id,
+          productId: prodId,
+          quantity: quantityToAdd
         },
       })
       return { cartItem };
     })
     return {
-      success : true,
-      message : "Added to cart",
-      data : res
+      success: true,
+      message: "Added to cart",
+      data: res
     }
   } catch (error) {
     return handleActionError(error);
   }
 }
 
-export async function removeFromCart(prodId:string,quantityToAdd:number=1){
+export async function removeFromCart(prodId: string, quantityToAdd: number = 1) {
   try {
-    const { customerId : userId } = await requireCustomer();
+    const { customerId: userId } = await requireCustomer();
 
     const cart = await prisma.cart.findUnique({
-      where : { userId }
+      where: { userId }
     });
 
-    if(!cart){
+    if (!cart) {
       throw new Error("Cannot find cart!! please add few items in cart");
     }
 
     const res = await prisma.$transaction(async (tx) => {
       const existingCartItem = await tx.cartItems.findUnique({
-        where : {
-          cartId_productId : {
-            cartId : cart.id,
-            productId : prodId
+        where: {
+          cartId_productId: {
+            cartId: cart.id,
+            productId: prodId
           }
         }
       })
-    
-      if(!existingCartItem){
+
+      if (!existingCartItem) {
         throw new Error("Cannot find cart item");
       }
 
       let cartItem;
 
-      if(existingCartItem.quantity <= quantityToAdd){
+      if (existingCartItem.quantity <= quantityToAdd) {
         cartItem = await tx.cartItems.delete({
-          where : {
-            cartId_productId : {
-              cartId : cart.id,
-              productId : prodId
+          where: {
+            cartId_productId: {
+              cartId: cart.id,
+              productId: prodId
             }
           }
         })
       }
       else {
         cartItem = await tx.cartItems.update({
-          where : {
-            cartId_productId : {
-              cartId : cart.id,
-              productId : prodId
+          where: {
+            cartId_productId: {
+              cartId: cart.id,
+              productId: prodId
             }
           },
-          data : {
-            quantity : { decrement : quantityToAdd }
+          data: {
+            quantity: { decrement: quantityToAdd }
           }
         })
       }
-      
+
       return { cartItem };
     })
     return {
-      success : true,
-      message : "Removed from cart",
-      data : res
+      success: true,
+      message: "Removed from cart",
+      data: res
     }
   } catch (error) {
     return handleActionError(error);
@@ -245,97 +245,99 @@ export async function getCart() {
   }
 }
 
-export async function orderProducts(){
+export async function orderProducts() {
   try {
     const { customerId } = await requireCustomer();
     const cart = await prisma.cart.findUnique({
-      where : { userId : customerId },
-      select : {
+      where: { userId: customerId },
+      select: {
         id: true,
-        items : {
-          include : {
-            product : true
+        items: {
+          include: {
+            product: true
           }
         }
       }
     });
 
-    if(!cart || cart.items.length === 0){
+    if (!cart || cart.items.length === 0) {
       throw new Error("Cannot find cart!! please add few items in cart");
     }
-    
+
     const res = await prisma.$transaction(async (tx) => {
-      for( const item of cart.items ){
-        if(item.product.quantity < item.quantity) {
+      for (const item of cart.items) {
+        if (item.product.quantity < item.quantity) {
           throw new Error("Insufficient items in stock")
         }
       }
 
       const newOrder = await tx.order.create({
-        data : {
+        data: {
           customerId,
           orderItems : {
             createMany : {
               data : cart.items.map((e) => ({
                 productId : e.productId,
                 quantity : e.quantity,
-                price : e.product.discountedPrice ?? e.product.price
+                price : e.product.discountedPrice ?? e.product.price,
+                vendorOtp : Math.floor(1000 + Math.random() * 9000),
+                customerOtp : Math.floor(1000 + Math.random() * 9000),
               }))
             }
           }
         },
-        include : {
-          orderItems : true,
+        include: {
+          orderItems: true,
         }
       })
 
-      if(newOrder){
-        for( const item of cart.items ){
+      if (newOrder) {
+        for (const item of cart.items) {
           await tx.product.update({
-          where : {
-            id : item.productId,
-          },
-          data : {
-            quantity : { decrement : item.quantity },
-          }
-        });
+            where: {
+              id: item.productId,
+            },
+            data: {
+              quantity: { decrement: item.quantity },
+            }
+          });
         }
       }
 
       await tx.cartItems.deleteMany({
-        where : { cartId : cart.id }
+        where: { cartId: cart.id }
       });
 
       return newOrder;
     })
-    
-    for( const item of res.orderItems ){
+
+    for (const item of res.orderItems) {
       await vendorAcceptOrderAction(item.id);
     }
-    
+
     return {
-      success : true,
-      message : "Create order successfully",
-      data : res
+      success: true,
+      message: "Create order successfully",
+      data: res
     }
   } catch (error) {
     return handleActionError(error)
   }
 }
 
-export async function getOrders(){
+export async function getOrders() {
   try {
     const { customerId } = await requireCustomer();
     const findOrders = await prisma.order.findMany({
-      where : {
+      where: {
         customerId,
       },
-      include : {
-        orderItems : {
-          include : {
-            product : {
-              select : {
-                name : true
+      include: {
+        orderItems: {
+          include: {
+            product: {
+              select: {
+                name: true
               }
             }
           }
@@ -343,9 +345,9 @@ export async function getOrders(){
       }
     })
     return {
-      success : true,
-      message : "No orders yet",
-      data : findOrders
+      success: true,
+      message: "No orders yet",
+      data: findOrders
     }
   } catch (error) {
     return handleActionError(error);

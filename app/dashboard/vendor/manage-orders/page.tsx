@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { changeOrderStatus, getOrderedProducts } from "@/app/api/vendor/action";
+import { getOrderedProducts } from "@/app/api/vendor/action";
 import PageLoading from "../loading";
 import { OrderStatus } from "@/app/generated/prisma/enums";
 
@@ -47,19 +47,6 @@ export default function ManageOrdersPage() {
     { value: OrderStatus.VENDOR_REJECTED, label: OrderStatus.VENDOR_REJECTED },
     { value: OrderStatus.DELIVERED, label: OrderStatus.DELIVERED },
   ];
-
-  async function orderStatusChange(id: string, status: OrderStatus) {
-    const res = await changeOrderStatus(id, status);
-    if (res.success) {
-      setOrderItems((prev) =>
-        prev.map((item) =>
-          item.id === id ? { ...item, orderStatus: status } : item
-        )
-      );
-    } else {
-      alert(res.message || "Failed to update status");
-    }
-  }
 
   if (isLoading) return <PageLoading />;
   if (error) {
@@ -165,25 +152,34 @@ export default function ManageOrdersPage() {
               </div>
             </div>
 
-            {/* Status selection - dedicated bottom row to prevent layout breakage on resize */}
-            <div className="border-t border-border pt-3 flex items-center justify-between gap-2">
-              <span className="text-[11px] font-mono uppercase font-bold text-muted-foreground shrink-0">
-                Fulfillment
-              </span>
-              <select
-                value={item.orderStatus}
-                onChange={(e) => orderStatusChange(item.id, e.target.value as OrderStatus)}
-                className="rounded-none border border-border bg-background px-2 py-1 text-xs font-mono uppercase font-semibold text-foreground focus:outline-none focus:border-foreground cursor-pointer transition-colors max-w-[65%]"
-              >
-                {statusOptions.map((e) => (
-                  <option key={e.value} value={e.value} className="bg-background text-foreground font-mono">
-                    {e.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-            {/* Driver Request / Assignment Row */}
-            
+            {/* Assigned Driver Info */}
+            {item.driver && (
+              <div className="border-t border-border pt-3 flex items-center justify-between text-xs">
+                <span className="text-[11px] font-mono uppercase text-muted-foreground">Assigned Driver</span>
+                <span className="font-mono font-semibold text-foreground truncate max-w-[60%] text-right">
+                  {item.driver.name} {item.driver.phone ? `(${item.driver.phone})` : ""}
+                </span>
+              </div>
+            )}
+
+            {/* Vendor Pickup OTP Banner */}
+            {item.vendorOtp && (
+              <div className="border-t border-border pt-3">
+                <div className="border border-foreground bg-muted/30 p-2.5 flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <span className="text-[10px] font-mono uppercase font-bold text-muted-foreground block">
+                      Pickup Code
+                    </span>
+                    <span className="text-[11px] font-mono text-muted-foreground">
+                      Give to driver on arrival
+                    </span>
+                  </div>
+                  <div className="border-2 border-foreground bg-background px-3 py-1 font-mono font-extrabold text-base tracking-widest text-foreground">
+                    {item.vendorOtp}
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         ))}
       </div>

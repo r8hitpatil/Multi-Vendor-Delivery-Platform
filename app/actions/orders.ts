@@ -83,11 +83,11 @@ export async function vendorAcceptOrderAction(orderId:string) {
         const address = updated.product.storeProducts.address;
         const adminId = updated.product.storeProducts.vendor.adminId;
         const liveDrivers = adminId ? await getLiveDrivers(adminId) : [];
-        const range = updated.product.storeProducts.vendor.admin?.range;
-        const rangeBy3 = range ? Number(range/3) : 5;
+        const range = updated.product.storeProducts.vendor.admin?.range ?? 15;
+        const rangeBy3 = Number(range / 3);
         let shouldWeSend = false;
 
-        if(address?.lat && address?.long && liveDrivers.length > 0 && range){
+        if (address?.lat && address?.long && liveDrivers.length > 0) {
             const storeLat = Number(address.lat);
             const storeLong = Number(address.long);
 

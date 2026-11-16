@@ -5,8 +5,15 @@ export async function proxy(req:NextRequest) {
     const token = req.cookies.get('access_token')?.value;
     const { pathname } = req.nextUrl;
 
-    if(pathname.startsWith("/dashboard") && !token){
-        return NextResponse.redirect(new URL("/login",req.url));
+    const isProtectedDashboard =
+        pathname.startsWith("/dashboard/super-admin") ||
+        pathname.startsWith("/dashboard/admin") ||
+        pathname.startsWith("/dashboard/vendor") ||
+        pathname.startsWith("/dashboard/driver") ||
+        pathname.startsWith("/dashboard/customer");
+
+    if (isProtectedDashboard && !token) {
+        return NextResponse.redirect(new URL("/login", req.url));
     }
 
     if(token){
@@ -48,6 +55,14 @@ export async function proxy(req:NextRequest) {
 
         if (pathname.startsWith("/dashboard/driver") && user.role !== "DRIVER") {
             return NextResponse.redirect(new URL("/dashboard", req.url));
+        }
+
+        if (pathname.startsWith("/dashboard/customer") && user.role !== "CUSTOMER") {
+            if (user.role === "SUPER_ADMIN") return NextResponse.redirect(new URL("/dashboard/super-admin", req.url));
+            if (user.role === "ADMIN") return NextResponse.redirect(new URL("/dashboard/admin", req.url));
+            if (user.role === "VENDOR") return NextResponse.redirect(new URL("/dashboard/vendor", req.url));
+            if (user.role === "DRIVER") return NextResponse.redirect(new URL("/dashboard/driver", req.url));
+            return NextResponse.redirect(new URL("/login", req.url));
         }
     }
 

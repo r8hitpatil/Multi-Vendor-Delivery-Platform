@@ -2,10 +2,10 @@
 
 import { useEffect, useState, useRef, useCallback } from "react";
 import * as maplibregl from "maplibre-gl";
-import Map, { Marker, NavigationControl } from "react-map-gl/maplibre";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { socket } from "@/app/libs/socket";
-import { Store, MapPin, Navigation } from "lucide-react";
+import { Clock } from "lucide-react";
+import { getDistanceInKm } from "@/distance";
 
 // Configure local worker to prevent "[browser] Error: Worker failed to load"
 if (typeof window !== "undefined" && typeof (maplibregl as any).setWorkerUrl === "function") {
@@ -16,7 +16,6 @@ if (typeof window !== "undefined" && typeof (maplibregl as any).setWorkerUrl ===
 const cartoApiKey = process.env.NEXT_PUBLIC_CARTO_API_KEY?.trim();
 
 // If a CARTO API Key is provided, use authenticated CARTO raster tiles with "?key=" parameter.
-// Note: CARTO basemaps support zoom levels 0-18. Setting maxzoom: 18 prevents 403 Forbidden errors at zoom 19+.
 const MAP_STYLE: any = cartoApiKey
   ? {
       version: 8,
@@ -59,6 +58,64 @@ function isValidCoord(lat: number | null, lng: number | null): boolean {
   return lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180;
 }
 
+function createStoreMarkerElement(name: string): HTMLElement {
+  const container = document.createElement("div");
+  container.className = "flex flex-col items-center pointer-events-auto cursor-pointer select-none";
+  container.style.zIndex = "10";
+  container.innerHTML = `
+    <span class="rounded-none border border-neutral-300 bg-white px-1.5 py-0.5 text-[9px] font-mono uppercase font-bold text-neutral-900 mb-1 shadow-xs whitespace-nowrap">${name}</span>
+    <div class="h-7 w-7 rounded-none border-2 border-neutral-900 bg-white text-neutral-900 flex items-center justify-center shadow-md">
+      <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="m2 7 4.41-4.41A2 2 0 0 1 7.83 2h8.34a2 2 0 0 1 1.42.59L22 7"/>
+        <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
+        <path d="M15 22v-4a2 2 0 0 0-2-2h-2a2 2 0 0 0-2 2v4"/>
+        <path d="M2 7h20"/>
+        <path d="M22 7v3a2 2 0 0 1-2 2v0a2.7 2.7 0 0 1-1.59-.63.7.7 0 0 0-.82 0A2.7 2.7 0 0 1 16 12a2.7 2.7 0 0 1-1.59-.63.7.7 0 0 0-.82 0A2.7 2.7 0 0 1 12 12a2.7 2.7 0 0 1-1.59-.63.7.7 0 0 0-.82 0A2.7 2.7 0 0 1 8 12a2.7 2.7 0 0 1-1.59-.63.7.7 0 0 0-.82 0A2.7 2.7 0 0 1 4 12v0a2 2 0 0 1-2-2V7"/>
+      </svg>
+    </div>
+    <div class="w-0.5 h-1.5 bg-neutral-900"></div>
+  `;
+  return container;
+}
+
+function createCustomerMarkerElement(): HTMLElement {
+  const container = document.createElement("div");
+  container.className = "flex flex-col items-center pointer-events-auto cursor-pointer select-none";
+  container.style.zIndex = "15";
+  container.innerHTML = `
+    <span class="rounded-none border-2 border-neutral-900 bg-white px-2 py-0.5 text-[10px] font-mono uppercase font-extrabold text-neutral-900 mb-1 shadow-xs tracking-wider whitespace-nowrap">YOU</span>
+    <div class="h-7 w-7 rounded-full bg-neutral-900 text-white flex items-center justify-center shadow-md">
+      <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2">
+        <path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"/>
+        <circle cx="12" cy="10" r="3" fill="white"/>
+      </svg>
+    </div>
+    <div class="w-0.5 h-1.5 bg-neutral-900"></div>
+  `;
+  return container;
+}
+
+function createDriverMarkerElement(): HTMLElement {
+  const container = document.createElement("div");
+  container.className = "flex flex-col items-center pointer-events-auto cursor-pointer select-none transition-transform duration-700 ease-linear";
+  container.style.zIndex = "20";
+  container.innerHTML = `
+    <div class="flex items-center gap-1 rounded-none border border-emerald-500/60 bg-white px-1.5 py-0.5 text-[9px] font-mono uppercase font-bold text-emerald-600 mb-1 shadow-xs whitespace-nowrap">
+      <span class="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-ping"></span>
+      <span>Driver</span>
+    </div>
+    <div class="relative">
+      <span class="absolute -inset-1 rounded-full bg-emerald-500/40 animate-pulse"></span>
+      <div class="relative h-8 w-8 rounded-full border-2 border-neutral-900 bg-neutral-900 text-white flex items-center justify-center shadow-lg">
+        <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2">
+          <polygon points="3 11 22 2 13 21 11 13 3 11"/>
+        </svg>
+      </div>
+    </div>
+  `;
+  return container;
+}
+
 interface LiveDeliveryMapProps {
   driverId?: string | null;
   storeLat?: number | string | null;
@@ -78,6 +135,13 @@ export default function LiveDeliveryMapInner({
   customerLong,
   customerAddress,
 }: LiveDeliveryMapProps) {
+  const mapContainerRef = useRef<HTMLDivElement | null>(null);
+  const mapRef = useRef<maplibregl.Map | null>(null);
+
+  const storeMarkerRef = useRef<maplibregl.Marker | null>(null);
+  const customerMarkerRef = useRef<maplibregl.Marker | null>(null);
+  const driverMarkerRef = useRef<maplibregl.Marker | null>(null);
+
   const parsedStoreLat = parseCoordinate(storeLat);
   const parsedStoreLng = parseCoordinate(storeLong);
   const parsedCustLat = parseCoordinate(customerLat);
@@ -86,15 +150,38 @@ export default function LiveDeliveryMapInner({
   const hasStore = isValidCoord(parsedStoreLat, parsedStoreLng);
   const hasCustomer = isValidCoord(parsedCustLat, parsedCustLng);
 
-  // Driver live coordinates - initialized to null so driver is never falsely rendered at store location
+  // Driver live coordinates state
   const [driverPos, setDriverPos] = useState<{ lat: number; lng: number } | null>(null);
 
-  const mapRef = useRef<any>(null);
+  // Real-time distance and estimated time calculation
+  const distanceKm =
+    driverPos && isValidCoord(driverPos.lat, driverPos.lng) && hasCustomer
+      ? getDistanceInKm(driverPos.lat, driverPos.lng, parsedCustLat!, parsedCustLng!)
+      : null;
+
+  // When driver reaches within 50m (0.05 km), make distance 0 and ETA 0
+  const isArrived = distanceKm !== null && distanceKm <= 0.05;
+  const displayDistance = isArrived
+    ? "0.00 km"
+    : distanceKm !== null
+    ? `${distanceKm.toFixed(2)} km`
+    : null;
+
+  // Estimated courier delivery time based on average urban speed (25 km/h)
+  const etaMinutes = isArrived
+    ? 0
+    : distanceKm !== null
+    ? Math.max(1, Math.round((distanceKm / 25) * 60))
+    : null;
 
   // Auto-fit camera bounds to encompass store, driver, and customer destination
   const fitMapBounds = useCallback(() => {
-    const map = mapRef.current?.getMap?.() || mapRef.current;
+    const map = mapRef.current;
     if (!map) return;
+
+    try {
+      map.resize();
+    } catch {}
 
     const coords: [number, number][] = [];
     if (hasStore) coords.push([parsedStoreLng!, parsedStoreLat!]);
@@ -106,23 +193,159 @@ export default function LiveDeliveryMapInner({
     if (coords.length >= 2) {
       const lngs = coords.map((c) => c[0]);
       const lats = coords.map((c) => c[1]);
-      const bounds: [[number, number], [number, number]] = [
-        [Math.min(...lngs), Math.min(...lats)],
-        [Math.max(...lngs), Math.max(...lats)],
-      ];
-      map.fitBounds(bounds, {
-        padding: { top: 50, bottom: 50, left: 50, right: 50 },
-        maxZoom: 15,
-        duration: 1000,
-      });
+      const minLng = Math.min(...lngs);
+      const maxLng = Math.max(...lngs);
+      const minLat = Math.min(...lats);
+      const maxLat = Math.max(...lats);
+
+      if (minLng === maxLng && minLat === maxLat) {
+        map.flyTo({
+          center: [minLng, minLat],
+          zoom: 14,
+          duration: 800,
+        });
+        return;
+      }
+
+      map.fitBounds(
+        [
+          [minLng, minLat],
+          [maxLng, maxLat],
+        ],
+        {
+          padding: { top: 60, bottom: 60, left: 60, right: 60 },
+          maxZoom: 15,
+          duration: 800,
+        }
+      );
     } else if (coords.length === 1) {
       map.flyTo({
         center: coords[0],
         zoom: 14,
-        duration: 1000,
+        duration: 800,
       });
     }
   }, [hasStore, hasCustomer, parsedStoreLat, parsedStoreLng, parsedCustLat, parsedCustLng, driverPos]);
+
+  // Initialize Native MapLibre GL map instance
+  useEffect(() => {
+    if (!mapContainerRef.current) return;
+
+    const initialCenter = (() => {
+      if (hasCustomer) return [parsedCustLng!, parsedCustLat!] as [number, number];
+      if (hasStore) return [parsedStoreLng!, parsedStoreLat!] as [number, number];
+      return [73.675, 18.735] as [number, number];
+    })();
+
+    const map = new maplibregl.Map({
+      container: mapContainerRef.current,
+      style: MAP_STYLE,
+      center: initialCenter,
+      zoom: 13,
+      maxZoom: 18,
+      attributionControl: false,
+    });
+
+    map.addControl(
+      new maplibregl.NavigationControl({ showCompass: false }),
+      "top-right"
+    );
+
+    mapRef.current = map;
+
+    map.on("load", () => {
+      fitMapBounds();
+    });
+
+    return () => {
+      storeMarkerRef.current?.remove();
+      customerMarkerRef.current?.remove();
+      driverMarkerRef.current?.remove();
+      storeMarkerRef.current = null;
+      customerMarkerRef.current = null;
+      driverMarkerRef.current = null;
+      map.remove();
+      mapRef.current = null;
+    };
+  }, []); // Run once on mount
+
+  // Sync Store Marker
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+
+    if (hasStore) {
+      if (!storeMarkerRef.current) {
+        const el = createStoreMarkerElement(storeName || "Store");
+        storeMarkerRef.current = new maplibregl.Marker({
+          element: el,
+          anchor: "bottom",
+        })
+          .setLngLat([parsedStoreLng!, parsedStoreLat!])
+          .addTo(map);
+      } else {
+        storeMarkerRef.current.setLngLat([parsedStoreLng!, parsedStoreLat!]);
+      }
+    } else if (storeMarkerRef.current) {
+      storeMarkerRef.current.remove();
+      storeMarkerRef.current = null;
+    }
+  }, [hasStore, parsedStoreLat, parsedStoreLng, storeName]);
+
+  // Sync Customer Marker ("YOU")
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+
+    if (hasCustomer) {
+      if (!customerMarkerRef.current) {
+        const el = createCustomerMarkerElement();
+        customerMarkerRef.current = new maplibregl.Marker({
+          element: el,
+          anchor: "bottom",
+        })
+          .setLngLat([parsedCustLng!, parsedCustLat!])
+          .addTo(map);
+      } else {
+        customerMarkerRef.current.setLngLat([parsedCustLng!, parsedCustLat!]);
+      }
+    } else if (customerMarkerRef.current) {
+      customerMarkerRef.current.remove();
+      customerMarkerRef.current = null;
+    }
+  }, [hasCustomer, parsedCustLat, parsedCustLng]);
+
+  // Sync Driver Marker
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+
+    if (driverPos && isValidCoord(driverPos.lat, driverPos.lng)) {
+      if (!driverMarkerRef.current) {
+        const el = createDriverMarkerElement();
+        driverMarkerRef.current = new maplibregl.Marker({
+          element: el,
+          anchor: "center",
+        })
+          .setLngLat([driverPos.lng, driverPos.lat])
+          .addTo(map);
+      } else {
+        driverMarkerRef.current.setLngLat([driverPos.lng, driverPos.lat]);
+      }
+    } else if (driverMarkerRef.current) {
+      driverMarkerRef.current.remove();
+      driverMarkerRef.current = null;
+    }
+  }, [driverPos]);
+
+  // Trigger fitMapBounds when coordinates update
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      fitMapBounds();
+    }, 200);
+
+    return () => clearTimeout(timer);
+  }, [fitMapBounds, parsedStoreLat, parsedStoreLng, parsedCustLat, parsedCustLng, driverPos]);
 
   // Connect to Socket room for this driver to receive real-time location updates
   useEffect(() => {
@@ -154,101 +377,60 @@ export default function LiveDeliveryMapInner({
     };
   }, [driverId]);
 
-  // Initial center calculation
-  const initialCenter = (() => {
-    if (hasCustomer) return { latitude: parsedCustLat!, longitude: parsedCustLng! };
-    if (hasStore) return { latitude: parsedStoreLat!, longitude: parsedStoreLng! };
-    return { latitude: 18.735, longitude: 73.675 };
-  })();
-
   return (
-    <div className="relative w-full h-64 sm:h-80 rounded-none border border-border overflow-hidden bg-muted/10">
+    <div className="relative w-full h-80 sm:h-96 rounded-none border border-border overflow-hidden bg-neutral-100">
       {/* Top Overlay Badge */}
-      <div className="absolute top-2 left-2 z-10 rounded-none border border-border bg-background/95 backdrop-blur-xs px-2.5 py-1 text-[10px] font-mono uppercase font-bold text-foreground flex items-center gap-2 shadow-xs">
+      <div className="absolute top-2 left-2 z-10 rounded-none border border-border bg-background/95 backdrop-blur-xs px-2.5 py-1 text-[10px] font-mono uppercase font-bold text-foreground flex items-center gap-2 shadow-xs pointer-events-none">
         <span
           className={`h-2 w-2 rounded-full ${
-            driverPos ? "bg-emerald-500 animate-pulse" : "bg-amber-500 animate-ping"
+            driverPos
+              ? "bg-emerald-500 animate-pulse"
+              : driverId
+              ? "bg-amber-500 animate-ping"
+              : "bg-neutral-500 animate-pulse"
           }`}
         />
-        <span>{driverPos ? "Live Delivery Tracking" : "Connecting to Driver GPS..."}</span>
+        <span>
+          {driverPos
+            ? "Live Delivery Tracking"
+            : driverId
+            ? "Connecting to Driver GPS..."
+            : "Searching for Driver..."}
+        </span>
       </div>
 
-      <Map
-        ref={mapRef}
-        mapLib={maplibregl}
-        onLoad={fitMapBounds}
-        maxZoom={18}
-        initialViewState={{
-          latitude: initialCenter.latitude,
-          longitude: initialCenter.longitude,
-          zoom: 13,
-        }}
-        style={{ width: "100%", height: "100%" }}
-        mapStyle={MAP_STYLE}
-        attributionControl={false}
-      >
-        <NavigationControl position="top-right" showCompass={false} />
+      {/* Pure MapLibre Map Container */}
+      <div ref={mapContainerRef} className="w-full h-full" />
 
-        {/* 1. Store Marker */}
-        {hasStore && (
-          <Marker
-            latitude={parsedStoreLat!}
-            longitude={parsedStoreLng!}
-            anchor="bottom"
-          >
-            <div className="flex flex-col items-center">
-              <span className="rounded-none border border-border bg-background px-1.5 py-0.5 text-[9px] font-mono uppercase font-bold text-foreground mb-1 shadow-xs whitespace-nowrap">
-                {storeName || "Store"}
-              </span>
-              <div className="h-7 w-7 rounded-none border-2 border-foreground bg-background text-foreground flex items-center justify-center shadow-md">
-                <Store className="h-4 w-4 text-foreground" />
-              </div>
-              <div className="w-0.5 h-1.5 bg-foreground" />
-            </div>
-          </Marker>
-        )}
+      {/* Live Distance & ETA HUD Strip */}
+      {driverPos && hasCustomer && (
+        <div className="absolute bottom-2 left-2 right-2 z-10 flex flex-wrap items-center justify-between gap-2 border border-border bg-background/95 backdrop-blur-xs px-3 py-1.5 text-[11px] font-mono shadow-md pointer-events-none">
+          <div className="flex items-center gap-1.5">
+            <span
+              className={`h-2 w-2 rounded-full ${
+                isArrived ? "bg-emerald-500" : "bg-emerald-500 animate-pulse"
+              }`}
+            />
+            <span className="font-bold uppercase tracking-wider text-foreground">
+              {isArrived ? "Driver Arrived at Your Location" : "Driver En Route"}
+            </span>
+          </div>
 
-        {/* 2. Customer Destination Marker */}
-        {hasCustomer && (
-          <Marker
-            latitude={parsedCustLat!}
-            longitude={parsedCustLng!}
-            anchor="bottom"
-          >
-            <div className="flex flex-col items-center">
-              <span className="rounded-none border border-border bg-background px-1.5 py-0.5 text-[9px] font-mono uppercase font-bold text-foreground mb-1 shadow-xs whitespace-nowrap">
-                {customerAddress ? `${customerAddress.slice(0, 18)}...` : "Delivery Address"}
-              </span>
-              <div className="h-7 w-7 rounded-full bg-foreground text-background flex items-center justify-center shadow-md">
-                <MapPin className="h-4 w-4 text-background fill-background" />
-              </div>
-              <div className="w-0.5 h-1.5 bg-foreground" />
+          <div className="flex items-center gap-3 sm:gap-4">
+            <div className="flex items-center gap-1 text-muted-foreground">
+              <span>Dist:</span>
+              <strong className="text-foreground">{displayDistance}</strong>
             </div>
-          </Marker>
-        )}
-
-        {/* 3. Dynamic Live Driver Marker */}
-        {driverPos && isValidCoord(driverPos.lat, driverPos.lng) && (
-          <Marker
-            latitude={driverPos.lat}
-            longitude={driverPos.lng}
-            anchor="center"
-          >
-            <div className="flex flex-col items-center transition-all duration-1000 ease-linear">
-              <div className="flex items-center gap-1 rounded-none border border-emerald-500/60 bg-background px-1.5 py-0.5 text-[9px] font-mono uppercase font-bold text-emerald-500 mb-1 shadow-xs whitespace-nowrap">
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-ping" />
-                <span>Driver</span>
-              </div>
-              <div className="relative">
-                <span className="absolute -inset-1 rounded-full bg-emerald-500/40 animate-pulse" />
-                <div className="relative h-8 w-8 rounded-full border-2 border-foreground bg-foreground text-background flex items-center justify-center shadow-lg">
-                  <Navigation className="h-4 w-4 text-background fill-background" />
-                </div>
-              </div>
+            <div className="flex items-center gap-1 text-muted-foreground">
+              <Clock className="h-3.5 w-3.5 text-foreground" />
+              <span>ETA:</span>
+              <strong className={isArrived ? "text-emerald-500 font-bold" : "text-foreground font-bold"}>
+                {isArrived ? "0 mins" : `${etaMinutes} mins`}
+              </strong>
             </div>
-          </Marker>
-        )}
-      </Map>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

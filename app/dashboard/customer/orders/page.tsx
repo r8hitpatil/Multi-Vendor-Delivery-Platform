@@ -1,9 +1,9 @@
 "use client";
 
+import Link from "next/link";
 import { useOrder } from "../hooks/useOrder";
 import PageLoading from "../loading";
 import { Package, Phone, Truck, CheckCircle2, ShieldCheck, RefreshCw } from "lucide-react";
-import LiveDeliveryMap from "./components/LiveDeliveryMap";
 
 export default function CustomerOrderPage() {
   const { data: orders = [], isLoading, isError, error, refetch, isFetching } = useOrder();
@@ -176,18 +176,16 @@ export default function CustomerOrderPage() {
                         </div>
                       )}
 
-                      {/* Live Map: Shown strictly when OUT_OF_DELIVERY */}
+                      {/* Link to Live Orders section for real-time map tracking */}
                       {isOutOfDelivery && (
                         <div className="pt-1">
-                          <LiveDeliveryMap
-                            driverId={item.driver?.id || item.driverId}
-                            storeLat={item.product?.storeProducts?.address?.lat}
-                            storeLong={item.product?.storeProducts?.address?.long}
-                            storeName={item.product?.storeProducts?.address?.storeName}
-                            customerLat={order.customer?.address?.lat}
-                            customerLong={order.customer?.address?.long}
-                            customerAddress={order.customer?.address?.address}
-                          />
+                          <Link
+                            href="/dashboard/customer/live-orders"
+                            className="inline-flex items-center gap-2 border border-foreground bg-foreground text-background px-3 py-1.5 text-xs font-mono uppercase font-bold hover:bg-neutral-800 transition-colors"
+                          >
+                            <Truck className="h-3.5 w-3.5" />
+                            <span>Track Live on Map &rarr;</span>
+                          </Link>
                         </div>
                       )}
 

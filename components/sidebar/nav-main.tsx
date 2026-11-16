@@ -9,6 +9,7 @@ import {
   LayoutDashboard,
   type LucideIcon,
   PackagePlus,
+  Radio,
   ShieldCheck,
   Store,
   Truck,
@@ -31,6 +32,7 @@ function getNavIcon(title: string): LucideIcon {
   if (lower.includes("create product") || lower.includes("add product")) return PackagePlus;
   if (lower.includes("manage product") || lower.includes("product")) return Boxes;
   if (lower.includes("create company") || lower.includes("company")) return Building2;
+  if (lower.includes("live")) return Radio;
   if (lower.includes("driver")) return Truck;
   if (lower.includes("admin")) return ShieldCheck;
   if (lower.includes("vendor")) return Store;

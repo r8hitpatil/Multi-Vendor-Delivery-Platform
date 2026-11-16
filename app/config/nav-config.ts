@@ -80,9 +80,14 @@ export const TableContents: NavContent = {
                 url : "/dashboard",
             },
             {
+                title : "Live Orders",
+                url : "/dashboard/customer/live-orders",
+            },
+            {
                 title : "Cart",
                 url : "/dashboard/customer/cart",
-            },{
+            },
+            {
                 title : "Your orders",
                 url : "/dashboard/customer/orders"
             }

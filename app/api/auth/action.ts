@@ -19,8 +19,13 @@ export async function loginAction(body: unknown) {
 
     const { email , password } = res.data;
 
-    const user = await prisma.user.findUnique({
-      where: { email },
+    const user = await prisma.user.findFirst({
+      where: {
+        email: {
+          equals: email.trim(),
+          mode: "insensitive",
+        },
+      },
     });
 
     if (!user) {
@@ -74,13 +79,15 @@ export async function verifyMe() {
 
 export async function requireAdmin(){
   const session = await getSession();
-  if(session?.role !== Role.ADMIN){
+  if(!session || session.role !== Role.ADMIN){
     throw new Error ("Unauthorized : Only authorized roles are allowed")
   }
+  const userId = session.userId;
+  if (!userId && !session.email) {
+    throw new Error("Unauthorized : Session invalid");
+  }
   const admin = await prisma.user.findUnique({
-    where : {
-      email : session.email
-    },
+    where : userId ? { id: userId } : { email: session.email },
     select : {
       id : true,
       companyId : true,
@@ -101,13 +108,15 @@ export async function requireAdmin(){
 
 export async function requireDriver(){
   const session = await getSession();
-  if(session?.role !== Role.DRIVER){
+  if(!session || session.role !== Role.DRIVER){
     throw new Error ("Unauthorized : Only authorized roles are allowed")
   }
+  const userId = session.userId;
+  if (!userId && !session.email) {
+    throw new Error("Unauthorized : Session invalid");
+  }
   const driver = await prisma.user.findUnique({
-    where : {
-      email : session.email,
-    },
+    where : userId ? { id: userId } : { email: session.email },
     select : {
       id : true,
       companyId : true,
@@ -129,13 +138,15 @@ export async function requireDriver(){
 
 export async function requireVendor(){
   const session = await getSession();
-  if(session?.role !== Role.VENDOR){
+  if(!session || session.role !== Role.VENDOR){
     throw new Error ("Unauthorized : Only authorized roles are allowed")
   }
+  const userId = session.userId;
+  if (!userId && !session.email) {
+    throw new Error("Unauthorized : Session invalid");
+  }
   const vendor = await prisma.user.findUnique({
-    where : {
-      email : session.email,
-    },
+    where : userId ? { id: userId } : { email: session.email },
     select : {
       id : true,
       companyId : true,
@@ -226,13 +237,15 @@ export async function userSignup(body:unknown){
 
 export async function requireCustomer(){
   const session = await getSession();
-  if(session?.role !== "CUSTOMER"){
+  if(!session || session.role !== "CUSTOMER"){
     throw new Error ("Unauthorized : Only authorized roles are allowed")
   }
+  const userId = session.userId;
+  if (!userId && !session.email) {
+    throw new Error("Unauthorized : Session invalid");
+  }
   const customer = await prisma.user.findUnique({
-    where : {
-      email : session.email
-    },
+    where : userId ? { id: userId } : { email: session.email },
     select : {
       id : true,
       ban : true,

@@ -1,48 +1,30 @@
-'use client'
+"use client";
 
-import { driverAcceptOrder, getDriverAdmin, saveDriverFcmToken } from "@/app/api/driver/action";
-import { getFirebaseMessaging } from "@/app/libs/firebase";
-import { socket } from "@/app/libs/socket";
-import { getToken, onMessage } from "firebase/messaging";
-import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { 
-  ArrowRight, 
-  Clock, 
-  MapPin, 
-  Navigation, 
-  Package, 
-  Radio 
+import { driverAcceptOrder } from "@/app/api/driver/action";
+import { useRouter } from "next/navigation";
+import { useDriver } from "./context/DriverContext";
+import {
+  ArrowRight,
+  Clock,
+  Navigation,
+  Package,
+  Radio,
 } from "lucide-react";
-
-type userDetail = {
-  adminId : string,
-  driverId : string
-}
-
-type ActiveAlert = {
-  orderId : string,
-  title : string,
-  body : string,
-  type?: "SEARCH" | "ASSIGNED",
-}
 
 export default function DriverPage() {
   const router = useRouter();
-  const [error,setError] = useState<string | null>(null);
-  const [userDetails,setUserDetails] = useState<userDetail | null>(null);
-  const [location, setLocation] = useState<{ lat: number; long: number } | null>(null);
-  const [fcmStatus,setFcmStatus] = useState<string>("Initializing push notifications...");
-  const [activeAlert,setActiveAlert] = useState<ActiveAlert | null>(null);
-  const [isAccepting,setIsAccepting] = useState(false);
-  const [timeLeft,setTimeLeft] = useState(20);
+  const { userDetails, location, fcmStatus, activeAlert, setActiveAlert, error } = useDriver();
+  const [isAccepting, setIsAccepting] = useState(false);
+  const [timeLeft, setTimeLeft] = useState(20);
 
-  async function handleAccepting(){
-    if(!activeAlert || isAccepting) return;
-    
+  async function handleAccepting() {
+    if (!activeAlert || isAccepting) return;
+
     try {
+      setIsAccepting(true);
       const res = await driverAcceptOrder(activeAlert.orderId);
-      if(!res.success){
+      if (!res.success) {
         setActiveAlert(null);
         alert(res.message);
         return;
@@ -51,152 +33,29 @@ export default function DriverPage() {
       setActiveAlert(null);
       alert(res.message);
     } catch (error) {
-      alert('Something went wrong');
-    }
-    finally {
+      alert("Something went wrong");
+    } finally {
       setIsAccepting(false);
     }
   }
 
   useEffect(() => {
-    if(!activeAlert || activeAlert.type === "ASSIGNED") return;
+    if (!activeAlert || activeAlert.type === "ASSIGNED") return;
     setTimeLeft(20);
     const t = setInterval(() => {
       setTimeLeft((s) => {
-        if(s <= 1){
+        if (s <= 1) {
           clearInterval(t);
           setActiveAlert(null);
           return 0;
         }
-        return s-1;
+        return s - 1;
       });
-    },1000);
+    }, 1000);
     return () => {
-      clearInterval(t)
+      clearInterval(t);
     };
-  },[activeAlert?.orderId, activeAlert?.type]);
-
-  useEffect(() => {
-    let isMounted = true;
-    let unsubscribeForeground: (() => void) | undefined;
-
-    async function initFcm(){
-      if(typeof window === "undefined" || !("Notification" in window) || !("serviceWorker" in navigator)) {
-        if(isMounted) setFcmStatus("Web push not supported in this browser");
-        return;
-      }
-
-      const messaging = await getFirebaseMessaging();
-      if(!messaging) {
-        if(isMounted) setFcmStatus("Firebase messaging unsupported.");
-        return;
-      }
-
-      const permission = await Notification.requestPermission();
-      if(permission !== "granted") {
-        if(isMounted) setFcmStatus(`Notification status : ${permission}`);
-          return;
-      }
-
-      const vapidKey = process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY;
-      if(!vapidKey){
-        if(isMounted) setFcmStatus("Missing NEXT_PUBLIC_FIREBASE_VAPID_KEY.");
-        return;
-      }
-
-      await navigator.serviceWorker.register("/firebase-messaging-sw.js");
-      const registration = await navigator.serviceWorker.ready;
-
-      const currentToken = await getToken(messaging,{
-        vapidKey,
-        serviceWorkerRegistration : registration,
-      })
-
-      if(!currentToken){
-        if(isMounted) setFcmStatus("Failed to generate FCM token.");
-        return;
-      }
-
-      const saveRes = await saveDriverFcmToken(currentToken);
-      if(isMounted) {
-        setFcmStatus(saveRes.success ? 'Push notification active' : 'Failed to save token');
-      }
-
-      unsubscribeForeground = onMessage(messaging,(payload) => {
-        console.log(`[FCM foreground alert received]`,payload);
-        const orderId = payload.data?.orderId;
-        const type = payload.data?.type === "ORDER_ASSIGNED_BY_ADMIN" ? "ASSIGNED" : "SEARCH";
-        const title = payload.notification?.title || payload.data?.title || "New Order";
-        const body = payload.notification?.body || payload.data?.body || "Tap to review details";
-        if(orderId){
-          setActiveAlert({orderId, title , body, type });
-        }
-      })
-    }
-
-    initFcm().catch((err) => {
-      console.error(`[FCM setup error]`,err);
-      if(isMounted) setFcmStatus("FCM initialization error.");
-    })
-
-    const getDetails = async () => {
-      const res = await getDriverAdmin();
-      if(res.success && res.data){
-        return setUserDetails(res.data);
-      }
-      else {
-        setError(res.message || "Failed to load admin id or driver id");
-      }
-    }
-    getDetails();
-    return () => {
-      isMounted = false;
-      if(unsubscribeForeground) unsubscribeForeground();
-    }
-   },[])
-
-  useEffect(() => {
-    if(!userDetails){
-      return;
-    }
-
-    const onConnect = () => {
-      socket.emit("driver-status",{
-        driverId : userDetails.driverId,
-        adminId : userDetails.adminId ,
-        status : true,
-      })
-    }
-
-    socket.on("connect",onConnect);
-    socket.connect();
-
-    socket.on("driver-urgent-order", (data: { orderId: string; message: string }) => {
-      setActiveAlert({
-        orderId: data.orderId,
-        title: "Order Assigned by Admin",
-        body: data.message,
-        type: "ASSIGNED",
-      });
-    });
-
-    const watchId = navigator.geolocation.watchPosition(
-      (position) => {
-        const lat = position.coords.latitude;
-        const long = position.coords.longitude;
-        setLocation({ lat, long });
-        socket.emit("driver-location",{adminId : userDetails.adminId, driverId : userDetails.driverId ,lat,long })
-      },
-      (err) => console.error("GPS error : ",err),
-      { enableHighAccuracy : true }
-    )
-    return () => {
-      navigator.geolocation.clearWatch(watchId);
-      socket.off("driver-urgent-order");
-      socket.off("connect",onConnect);
-      socket.disconnect();
-    }
-  },[userDetails]);
+  }, [activeAlert?.orderId, activeAlert?.type, setActiveAlert]);
 
   return (
     <div className="w-full max-w-5xl mx-auto space-y-6 min-w-0">

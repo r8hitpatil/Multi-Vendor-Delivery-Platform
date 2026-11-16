@@ -38,8 +38,16 @@ function getNavIcon(title: string): LucideIcon {
   return LayoutDashboard;
 }
 
-export function NavMain({ roleIs, groups }: { roleIs: Role; groups: NavContent }) {
-  const content = groups?.[roleIs];
+const GUEST_ACTIONS = {
+  title: "Guest",
+  actions: [
+    { title: "Browse Products", url: "/dashboard" },
+    { title: "Log In", url: "/login" },
+  ],
+};
+
+export function NavMain({ roleIs, groups }: { roleIs?: Role; groups: NavContent }) {
+  const content = roleIs ? groups?.[roleIs] : GUEST_ACTIONS;
   const { setOpenMobile, isMobile } = useSidebar();
   const pathname = usePathname();
 

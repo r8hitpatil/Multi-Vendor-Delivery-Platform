@@ -6,12 +6,12 @@ import { Role, TableContents } from "@/app/config/nav-config";
 import { NavMain } from "./sidebar/nav-main";
 import { NavFooter } from "./sidebar/nav-footer";
 
-export default function AppSidebar({role}:{role:Role}) {
+export default function AppSidebar({role}:{role?:Role}) {
   return (
     <Sidebar>
-      <NavHeader label={role}/>
+      <NavHeader label={role || ""}/>
       <NavMain roleIs={role} groups={TableContents} />
-      <NavFooter />
+      <NavFooter isLoggedIn={Boolean(role)} />
     </Sidebar>
   )
 }

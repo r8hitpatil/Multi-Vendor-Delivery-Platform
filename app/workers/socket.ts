@@ -27,7 +27,8 @@ io.on("connection",(socket) => {
 
     socket.on("join-driver",(driverId:string) => {
         socket.join(driverId);
-        console.log(`[Socket] Driver joined room : ${driverId}`);
+        console.log(`[Socket] Client joined driver room : ${driverId}`);
+        io.to(driverId).emit("ping-driver-location");
     })
 
     socket.on("driver-location",(data: {driverId:string,adminId:string,lat:number,long:number }) => {

@@ -6,10 +6,12 @@ import { addToCart } from "../api/customer/action";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCart } from "./customer/hooks/useCart";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import AddressDialog from "@/components/address-dialog";
 
 export default function Dashboard(){
 
+  const router = useRouter();
   const queryClient = useQueryClient();
   const { data : products = [], isLoading, isError, error } = useProducts();
   const { data : cart } = useCart();
@@ -21,6 +23,10 @@ export default function Dashboard(){
   if (isError) return <div>Error: {error?.message}</div>;
 
   async function handleCartAdd (id:string) {
+    if (!cart) {
+      router.push("/login");
+      return;
+    }
     if(!hasAddress) {
       setPendingProd(id);
       setAddressModalOpen(true);
@@ -52,10 +58,11 @@ export default function Dashboard(){
                   <span className="text-sm text-muted-foreground">Quantity : {e.quantity}</span>
                 </div>
                 <button 
+                  disabled={e.quantity <= 0}
                   onClick={() => handleCartAdd(e.id)}
-                  className="w-full bg-black text-white hover:bg-neutral-800 transition py-2 px-3 rounded-md text-sm font-medium"
+                  className="w-full bg-black text-white hover:bg-neutral-800 disabled:bg-neutral-300 disabled:text-neutral-500 disabled:cursor-not-allowed transition py-2 px-3 rounded-md text-sm font-medium"
                 >
-                  Add to cart
+                  {e.quantity <= 0 ? "Out of Stock" : "Add to cart"}
                 </button>
               </div>
           )

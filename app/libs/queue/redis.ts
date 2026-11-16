@@ -12,7 +12,14 @@ declare global {
     var globalRedisClient: Redis | undefined;
 }
 
-export const redisConnection = global.globalRedisClient ?? new Redis(redisConfig);
+export const redisConnection = global.globalRedisClient ?? (
+    process.env.REDIS_URL
+        ? new Redis(process.env.REDIS_URL, {
+            maxRetriesPerRequest: null,
+            enableReadyCheck: false,
+        })
+        : new Redis(redisConfig)
+);
 
 if(process.env.NODE_ENV !== 'production') {
     global.globalRedisClient = redisConnection;

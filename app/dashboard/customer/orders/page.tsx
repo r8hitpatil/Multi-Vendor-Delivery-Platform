@@ -3,6 +3,7 @@
 import { useOrder } from "../hooks/useOrder";
 import PageLoading from "../loading";
 import { Package, Phone, Truck, CheckCircle2, ShieldCheck, RefreshCw } from "lucide-react";
+import LiveDeliveryMap from "./components/LiveDeliveryMap";
 
 export default function CustomerOrderPage() {
   const { data: orders = [], isLoading, isError, error, refetch, isFetching } = useOrder();
@@ -175,7 +176,22 @@ export default function CustomerOrderPage() {
                         </div>
                       )}
 
-                      {/* 🔑 CUSTOMER DELIVERY OTP: Available immediately for the customer! */}
+                      {/* Live Map: Shown strictly when OUT_OF_DELIVERY */}
+                      {isOutOfDelivery && (
+                        <div className="pt-1">
+                          <LiveDeliveryMap
+                            driverId={item.driver?.id || item.driverId}
+                            storeLat={item.product?.storeProducts?.address?.lat}
+                            storeLong={item.product?.storeProducts?.address?.long}
+                            storeName={item.product?.storeProducts?.address?.storeName}
+                            customerLat={order.customer?.address?.lat}
+                            customerLong={order.customer?.address?.long}
+                            customerAddress={order.customer?.address?.address}
+                          />
+                        </div>
+                      )}
+
+                      {/* CUSTOMER DELIVERY OTP: Available immediately for the customer! */}
                       {item.customerOtp && !isDelivered && (
                         <div className="rounded-none border-2 border-foreground bg-muted/40 p-3 sm:p-3.5 space-y-2 mt-2">
                           <div className="flex items-center justify-between gap-2">

@@ -32,6 +32,13 @@ export default function Home() {
         {/* Right Auth Buttons */}
         <div className="flex items-center gap-3">
           <Link
+            href="/dashboard"
+            className="px-5 py-2 rounded-full border border-neutral-300 text-xs sm:text-sm font-medium text-neutral-800 hover:bg-neutral-200/50 transition-colors"
+          >
+            Browse Products
+          </Link>
+
+          <Link
             href="/login"
             className="px-5 py-2 rounded-full border border-neutral-300 text-xs sm:text-sm font-medium text-neutral-800 hover:bg-neutral-200/50 transition-colors"
           >
@@ -68,20 +75,20 @@ export default function Home() {
           </p>
 
           <div className="mt-8 sm:mt-10 flex items-center gap-4">
-            <button
-              onClick={() => setSignupModalOpen(true)}
+            <Link
+              href="/dashboard"
               className="px-6 sm:px-7 py-3 rounded-full bg-black text-white text-xs sm:text-sm font-medium hover:bg-neutral-800 transition-colors flex items-center gap-2 group cursor-pointer shadow-sm"
             >
-              <span>Sign Up</span>
+              <span>Browse Catalog</span>
               <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
-            </button>
+            </Link>
 
-            <Link
-              href="/login"
+            <button
+              onClick={() => setSignupModalOpen(true)}
               className="px-6 sm:px-7 py-3 rounded-full border border-neutral-300 bg-transparent text-neutral-800 text-xs sm:text-sm font-medium hover:bg-neutral-200/50 transition-colors"
             >
-              Log In
-            </Link>
+              Sign Up
+            </button>
           </div>
         </div>
 

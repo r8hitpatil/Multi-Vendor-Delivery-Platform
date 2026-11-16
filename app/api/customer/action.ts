@@ -293,14 +293,18 @@ export async function orderProducts() {
 
       if (newOrder) {
         for (const item of cart.items) {
-          await tx.product.update({
+          const updated = await tx.product.updateMany({
             where: {
               id: item.productId,
+              quantity: { gte: item.quantity },
             },
             data: {
               quantity: { decrement: item.quantity },
             }
           });
+          if (updated.count !== 1) {
+            throw new Error(`Insufficient stock for ${item.product.name}`);
+          }
         }
       }
 
@@ -333,22 +337,42 @@ export async function getOrders() {
         customerId,
       },
       include: {
+        customer: {
+          include: {
+            address: true,
+          },
+        },
         orderItems: {
           include: {
             product: {
+              include: {
+                storeProducts: {
+                  include: {
+                    address: true,
+                  },
+                },
+              },
+            },
+            driver: {
               select: {
-                name: true
-              }
-            }
-          }
-        }
-      }
-    })
+                id: true,
+                name: true,
+                phone: true,
+              },
+            },
+          },
+        },
+      },
+      orderBy: {
+        id: "desc",
+      },
+    });
+
     return {
       success: true,
-      message: "No orders yet",
-      data: findOrders
-    }
+      message: "Fetched customer orders",
+      data: findOrders,
+    };
   } catch (error) {
     return handleActionError(error);
   }

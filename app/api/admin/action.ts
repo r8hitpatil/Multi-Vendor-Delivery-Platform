@@ -1,13 +1,12 @@
 "use server"
 
-import { Role, Status } from "@/app/generated/prisma/enums"
+import { Role, Status, OrderStatus, DispatchStatus } from "@/app/generated/prisma/enums"
 import { handleActionError } from "@/app/libs/errors";
 import { prisma } from "@/app/libs/prisma";
 import { requireAdmin } from "../auth/action";
 import * as argon from 'argon2';
 import { zodError } from "@/app/libs/zod-error";
 import { createDriverSchema, manageDriverSchema, updateVendorSchema } from "./schema";
-import { DispatchStatus } from "@/app/generated/prisma/enums"; // make sure DispatchStatus is imported
 
 // 1. Returns current admin's ID for socket room joining
 export async function getAdminInfo() {
@@ -334,4 +333,105 @@ export async function getAdmins(companyId:string){
     } catch (error) {
         return handleActionError(error);
     }
+}
+
+export async function getAdminAnalytics() {
+  try {
+    const { adminId } = await requireAdmin();
+
+    const [
+      totalVendors,
+      activeVendors,
+      pendingVendors,
+      totalDrivers,
+      activeDrivers,
+      totalCustomers,
+      totalOrders,
+      allOrderItems,
+    ] = await Promise.all([
+      prisma.user.count({ where: { Role: Role.VENDOR } }),
+      prisma.user.count({ where: { Role: Role.VENDOR, status: Status.ACCEPTED } }),
+      prisma.user.count({ where: { Role: Role.VENDOR, status: Status.PENDING } }),
+      prisma.user.count({ where: { Role: Role.DRIVER } }),
+      prisma.user.count({ where: { Role: Role.DRIVER, status: Status.ACCEPTED } }),
+      prisma.user.count({ where: { Role: Role.CUSTOMER } }),
+      prisma.order.count(),
+      prisma.orderItem.findMany({
+        select: {
+          id: true,
+          price: true,
+          quantity: true,
+          orderStatus: true,
+          dispatchStatus: true,
+        },
+      }),
+    ]);
+
+    const totalUsers = totalVendors + totalDrivers + totalCustomers;
+
+    const totalIncome = allOrderItems
+      .filter((i) => i.orderStatus === OrderStatus.DELIVERED)
+      .reduce((sum, i) => sum + i.price * i.quantity, 0);
+
+    const pipelineIncome = allOrderItems
+      .filter((i) => i.orderStatus !== OrderStatus.CANCELLED)
+      .reduce((sum, i) => sum + i.price * i.quantity, 0);
+
+    const deliveredOrders = allOrderItems.filter(
+      (i) => i.orderStatus === OrderStatus.DELIVERED
+    ).length;
+    const activeOrders = allOrderItems.filter(
+      (i) =>
+        i.orderStatus !== OrderStatus.DELIVERED &&
+        i.orderStatus !== OrderStatus.CANCELLED
+    ).length;
+    const needsAdminOrders = allOrderItems.filter(
+      (i) => i.dispatchStatus === DispatchStatus.NEEDS_ADMIN
+    ).length;
+
+    const fulfillmentRate =
+      allOrderItems.length > 0
+        ? Math.round((deliveredOrders / allOrderItems.length) * 100)
+        : 0;
+
+    const statusCounts = {
+      PLACED: allOrderItems.filter((i) => i.orderStatus === OrderStatus.PLACED).length,
+      VENDOR_ACCEPTED: allOrderItems.filter(
+        (i) => i.orderStatus === OrderStatus.VENDOR_ACCEPTED
+      ).length,
+      READY: allOrderItems.filter((i) => i.orderStatus === OrderStatus.READY).length,
+      OUT_OF_DELIVERY: allOrderItems.filter(
+        (i) => i.orderStatus === OrderStatus.OUT_OF_DELIVERY
+      ).length,
+      DELIVERED: deliveredOrders,
+      CANCELLED: allOrderItems.filter(
+        (i) => i.orderStatus === OrderStatus.CANCELLED
+      ).length,
+    };
+
+    return {
+      success: true as const,
+      message: "Fetched admin platform analytics successfully",
+      data: {
+        totalIncome,
+        pipelineIncome,
+        totalVendors,
+        activeVendors,
+        pendingVendors,
+        totalDrivers,
+        activeDrivers,
+        totalCustomers,
+        totalUsers,
+        totalOrders,
+        totalOrderItems: allOrderItems.length,
+        deliveredOrders,
+        activeOrders,
+        needsAdminOrders,
+        fulfillmentRate,
+        statusCounts,
+      },
+    };
+  } catch (error) {
+    return handleActionError(error);
+  }
 }
